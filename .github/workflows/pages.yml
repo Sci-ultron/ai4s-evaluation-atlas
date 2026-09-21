@@ -1,0 +1,39 @@
+name: Validate and publish Pages
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Validate website and catalog
+        run: |
+          node --check app.js
+          node scripts/check-site.mjs
+      - uses: actions/configure-pages@v5
+      - name: Stage public assets only
+        run: |
+          mkdir _site
+          cp index.html app.js styles.css favicon.svg catalog.json .nojekyll _site/
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
