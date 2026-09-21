@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="AI4S Evaluation Atlas：1956 个科学模型评测集的深度分类、检索与溯源目录。" />
+    <title>AI4S Evaluation Atlas · 科学模型评测地图</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <header class="topbar">
+        <a class="brand" href="#top" aria-label="回到 AI4S Evaluation Atlas 首页">
+          <span class="brand-mark">∴</span>
+          <span><strong>AI4S</strong><small>Evaluation Atlas</small></span>
+        </a>
+        <div class="topbar-meta">
+          <span class="status-dot"></span><span id="sync-status">Registry loading</span>
+          <a href="https://github.com/Sci-ultron/chem-eval-suite" target="_blank" rel="noreferrer">GitHub ↗</a>
+        </div>
+      </header>
+
+      <main id="top">
+        <section class="hero">
+          <div class="hero-copy">
+            <p class="eyebrow">SCIENCE MODEL EVALUATION / PRIVATE CATALOG</p>
+            <h1>把科学能力拆开，<em>逐项测量。</em></h1>
+            <p class="lede">面向模型迭代、科研 Agent 和 AI4S 团队的评测地图。按领域、能力、工作流阶段、模态、开放性和证据等级定位真正可用的基准。</p>
+            <div class="hero-actions">
+              <a class="button button-primary" href="#catalog">浏览评测集 <span>↓</span></a>
+              <button class="button button-ghost" id="download-catalog">下载机器目录</button>
+            </div>
+          </div>
+          <div class="signal-card" aria-label="目录信号">
+            <div class="signal-grid">
+              <div class="signal-cell signal-large"><span id="hero-count">—</span><small>已登记评测</small></div>
+              <div class="signal-cell"><span id="hero-domains">—</span><small>科学域</small></div>
+              <div class="signal-cell"><span id="hero-suites">—</span><small>评测套件</small></div>
+              <div class="signal-cell"><span id="hero-orgs">—</span><small>机构/公司</small></div>
+            </div>
+            <div class="signal-foot"><span class="pulse"></span> evidence-first · revision-pinned · deduplicated</div>
+          </div>
+        </section>
+
+        <section class="atlas-section" id="catalog">
+          <div class="section-heading">
+            <div><p class="eyebrow">THE ATLAS</p><h2>评测目录</h2></div>
+            <p class="section-note">分类由注册表字段可解释地推导；“收录”不等于“已下载”，访问边界和许可证始终保留。</p>
+          </div>
+
+          <div class="kpi-row" id="kpi-row"></div>
+
+          <div class="workbench">
+            <aside class="filters" aria-label="评测筛选">
+              <div class="filter-head"><span>筛选器</span><button id="reset-filters">重置</button></div>
+              <label class="search-label" for="search">搜索名称、任务、论文</label>
+              <div class="search-wrap"><span>⌕</span><input id="search" type="search" placeholder="例如：protein / agent / chemistry" autocomplete="off" /></div>
+              <div class="filter-group"><label for="domain-filter">科学域</label><select id="domain-filter"><option value="">全部科学域</option></select></div>
+              <div class="filter-group"><label for="family-filter">能力层</label><select id="family-filter"><option value="">全部能力层</option></select></div>
+              <div class="filter-group"><label for="mode-filter">评测范式</label><select id="mode-filter"><option value="">全部范式</option></select></div>
+              <div class="filter-group"><label for="access-filter">访问边界</label><select id="access-filter"><option value="">全部访问状态</option></select></div>
+              <div class="filter-group"><label for="year-filter">年份</label><select id="year-filter"><option value="">全部年份</option></select></div>
+              <div class="filter-divider"></div>
+              <div class="filter-foot"><span>当前命中</span><strong id="result-count">—</strong></div>
+            </aside>
+
+            <div class="results-pane">
+              <div class="results-toolbar"><div><strong id="result-label">全部评测</strong><span id="result-context">加载中…</span></div><select id="sort-filter" aria-label="排序"><option value="relevance">相关度</option><option value="year">最新年份</option><option value="name">名称 A–Z</option><option value="domain">科学域</option></select></div>
+              <div id="benchmark-list" class="benchmark-list" aria-live="polite"></div>
+              <div class="pagination"><button id="prev-page" aria-label="上一页">←</button><span id="page-label">—</span><button id="next-page" aria-label="下一页">→</button></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="insights-section">
+          <div class="section-heading"><div><p class="eyebrow">CAPABILITY MATRIX</p><h2>能力分布</h2></div><p class="section-note">快速识别当前评测矩阵覆盖与空白，点击标签即可带回目录筛选。</p></div>
+          <div class="insight-grid">
+            <article class="insight-card"><div class="card-title"><span>能力轴</span><span class="muted">按评测计数</span></div><div id="capability-bars" class="bar-list"></div></article>
+            <article class="insight-card"><div class="card-title"><span>工作流阶段</span><span class="muted">从问题到复现</span></div><div id="workflow-bars" class="bar-list"></div></article>
+            <article class="insight-card"><div class="card-title"><span>证据强度</span><span class="muted">可追溯性</span></div><div id="evidence-bars" class="bar-list"></div></article>
+          </div>
+        </section>
+
+        <section class="suites-section">
+          <div class="section-heading"><div><p class="eyebrow">CURATED ROUTES</p><h2>评测套件</h2></div><p class="section-note">把单项基准组合成可持续跑的模型迭代路线。</p></div>
+          <div id="suite-list" class="suite-list"></div>
+        </section>
+      </main>
+
+      <footer class="footer"><span>AI4S Evaluation Atlas</span><span id="footer-meta">科学评测注册表</span><a href="https://github.com/Sci-ultron/chem-eval-suite" target="_blank" rel="noreferrer">维护与贡献 ↗</a></footer>
+    </div>
+    <div id="detail-drawer" class="drawer" aria-hidden="true"><div class="drawer-backdrop" data-close-drawer></div><aside class="drawer-panel"><button class="drawer-close" data-close-drawer aria-label="关闭详情">×</button><div id="drawer-content"></div></aside></div>
+    <script src="app.js" defer></script>
+  </body>
+</html>
