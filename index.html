@@ -75,7 +75,7 @@
               <div class="filter-group"><label for="mode-filter">评测范式</label><select id="mode-filter"><option value="">全部范式</option></select></div>
               <div class="filter-group"><label for="access-filter">访问边界</label><select id="access-filter"><option value="">全部访问状态</option></select></div>
               <div class="filter-group"><label for="year-filter">年份</label><select id="year-filter"><option value="">全部年份</option></select></div>
-              <div class="filter-group"><label for="industry-filter">大厂公开信号</label><select id="industry-filter"><option value="">全部</option><option value="published">大厂公开发布</option><option value="evaluated">大厂评测证据</option></select></div>
+              <div class="filter-group"><label for="industry-filter">大厂关系类型</label><select id="industry-filter"><option value="">全部</option><option value="company_published">大厂自研/发布评测集</option><option value="external_evaluation">大厂模型外部评测</option><option value="both">大厂发布 + 外部评测</option></select></div>
               <div class="filter-divider"></div>
               <div class="filter-foot"><span>当前命中</span><strong id="result-count">—</strong></div>
             </aside>
@@ -89,11 +89,11 @@
         </section>
 
         <section class="taxonomy-section" aria-labelledby="taxonomy-title">
-          <div class="section-heading"><div><p class="eyebrow">TAXONOMY / COUNTS / INDUSTRY SIGNALS</p><h2 id="taxonomy-title">分类、题目数量与大厂公开信号</h2></div><p class="section-note">题目/任务数量只抽取上游明确写出的规模，单位可能混合，不用于质量排名；“大厂发布/评测”是公开关系证据，不代表内部认可或背书。</p></div>
+          <div class="section-heading"><div><p class="eyebrow">TAXONOMY / COUNTS / INDUSTRY SIGNALS</p><h2 id="taxonomy-title">分类、题目数量与大厂关系类型</h2></div><p class="section-note">题目/任务数量只抽取上游明确写出的规模，单位可能混合，不用于质量排名；“大厂自研/发布评测集”与“大厂模型外部评测”严格分开，均不代表内部认可或背书。</p></div>
           <div class="taxonomy-grid">
             <article class="taxonomy-card taxonomy-card-highlight"><div class="card-title"><span>题目 / 任务数量</span><span class="muted">可结构化字段</span></div><div id="question-summary"></div></article>
             <article class="taxonomy-card"><div class="card-title"><span>学科分类</span><span class="muted">评测集数量</span></div><div id="subject-bars" class="taxonomy-list"></div></article>
-            <article class="taxonomy-card"><div class="card-title"><span>大厂公开关系</span><span id="major-company-summary" class="muted">加载中…</span></div><div id="major-company-bars" class="taxonomy-list"></div></article>
+            <article class="taxonomy-card"><div class="card-title"><span>大厂关系类型</span><span id="major-company-summary" class="muted">加载中…</span></div><div id="major-company-bars" class="taxonomy-list"></div></article>
           </div>
         </section>
 

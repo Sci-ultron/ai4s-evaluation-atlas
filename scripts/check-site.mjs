@@ -15,6 +15,7 @@ assert.ok(catalog.facets?.domain, 'Use the website exporter, not the raw registr
 assert.ok(catalog.taxonomy?.subjects?.length, 'Missing taxonomy subject summaries');
 assert.ok(catalog.taxonomy?.question_count, 'Missing question-count taxonomy');
 assert.ok(catalog.taxonomy?.major_company, 'Missing major-company signal taxonomy');
+assert.ok(Array.isArray(catalog.taxonomy.major_company.families), 'Missing major-company family taxonomy');
 assert.equal(catalog.suite_count, catalog.suites.length);
 assert.equal(catalog.organization_count, Object.keys(catalog.organizations).length);
 assert.equal(catalog.relationship_count, catalog.benchmarks.reduce((n, b) => n + b.organizations.length, 0));
@@ -24,6 +25,9 @@ for (const b of catalog.benchmarks) {
   for (const field of ['task_types', 'modalities', 'metrics', 'organizations']) assert.ok(Array.isArray(b[field]), `${b.id}: ${field}`);
   assert.ok(Object.hasOwn(b, 'question_count'), `${b.id}: question_count`);
   assert.ok(Array.isArray(b.major_company_signals), `${b.id}: major_company_signals`);
+  assert.ok(['none', 'company_published', 'external_evaluation', 'both'].includes(b.major_company_status?.release_type), `${b.id}: major_company_status`);
+  assert.ok(Array.isArray(b.major_company_status?.published_by), `${b.id}: major_company_status.published_by`);
+  assert.ok(Array.isArray(b.major_company_status?.evaluated_by), `${b.id}: major_company_status.evaluated_by`);
   for (const field of ['capability_axes', 'workflow_stages', 'evaluation_modes']) assert.ok(Array.isArray(b.classification[field]), `${b.id}: ${field}`);
   assert.ok(b.paper && b.official && b.integration);
   assert.ok(!('local_path' in b.integration), 'Private checkout paths must not be exported');
