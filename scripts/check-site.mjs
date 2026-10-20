@@ -25,7 +25,7 @@ for (const b of catalog.benchmarks) {
   for (const field of ['task_types', 'modalities', 'metrics', 'organizations']) assert.ok(Array.isArray(b[field]), `${b.id}: ${field}`);
   assert.ok(Object.hasOwn(b, 'question_count'), `${b.id}: question_count`);
   assert.ok(Array.isArray(b.major_company_signals), `${b.id}: major_company_signals`);
-  assert.ok(['none', 'company_published', 'external_evaluation', 'both'].includes(b.major_company_status?.release_type), `${b.id}: major_company_status`);
+  assert.ok(['none', 'company_published', 'evaluation_record', 'release_and_evaluation'].includes(b.major_company_status?.release_type), `${b.id}: major_company_status`);
   assert.ok(Array.isArray(b.major_company_status?.published_by), `${b.id}: major_company_status.published_by`);
   assert.ok(Array.isArray(b.major_company_status?.evaluated_by), `${b.id}: major_company_status.evaluated_by`);
   for (const field of ['capability_axes', 'workflow_stages', 'evaluation_modes']) assert.ok(Array.isArray(b.classification[field]), `${b.id}: ${field}`);
@@ -81,6 +81,16 @@ assert.match(nodes.get('benchmark-list').innerHTML, /GPQA/i);
 nodes.get('search').value = 'no-such-benchmark-unique-needle';
 vm.runInContext('applyFilters()', context);
 assert.equal(nodes.get('result-count').textContent, '0');
+vm.runInContext('reset()', context);
+for (const company of ['OpenAI', 'Tencent / Hunyuan', 'ByteDance / Seed']) {
+  for (const role of ['released_by', 'official_evaluation', 'external_evaluation', 'evaluation_unresolved']) {
+    nodes.get('company-filter').value = company;
+    nodes.get('industry-filter').value = role;
+    vm.runInContext('applyFilters()', context);
+    const expected = catalog.benchmarks.filter(b => b.major_company_signals.some(s => s.company_family === company && s.context === role)).length;
+    assert.equal(nodes.get('result-count').textContent, expected.toLocaleString('en-US'), `${company}: ${role}`);
+  }
+}
 vm.runInContext('reset()', context);
 nodes.get('domain-filter').value = 'Chemistry';
 vm.runInContext('applyFilters()', context);

@@ -75,7 +75,8 @@
               <div class="filter-group"><label for="mode-filter">评测范式</label><select id="mode-filter"><option value="">全部范式</option></select></div>
               <div class="filter-group"><label for="access-filter">访问边界</label><select id="access-filter"><option value="">全部访问状态</option></select></div>
               <div class="filter-group"><label for="year-filter">年份</label><select id="year-filter"><option value="">全部年份</option></select></div>
-              <div class="filter-group"><label for="industry-filter">大厂关系类型</label><select id="industry-filter"><option value="">全部</option><option value="company_published">大厂自研/发布评测集</option><option value="external_evaluation">大厂模型外部评测</option><option value="both">大厂发布 + 外部评测</option></select></div>
+              <div class="filter-group"><label for="company-filter">模型公司 / 品牌</label><select id="company-filter"><option value="">全部公司</option></select></div>
+              <div class="filter-group"><label for="industry-filter">公司关系类型</label><select id="industry-filter"><option value="">全部关系</option><option value="released_by">公司发布/联合发布</option><option value="official_evaluation">公司官方报告使用</option><option value="external_evaluation">第三方测试其模型</option><option value="evaluation_unresolved">评测主体待核实</option></select></div>
               <div class="filter-divider"></div>
               <div class="filter-foot"><span>当前命中</span><strong id="result-count">—</strong></div>
             </aside>
@@ -89,11 +90,11 @@
         </section>
 
         <section class="taxonomy-section" aria-labelledby="taxonomy-title">
-          <div class="section-heading"><div><p class="eyebrow">TAXONOMY / COUNTS / INDUSTRY SIGNALS</p><h2 id="taxonomy-title">分类、题目数量与大厂关系类型</h2></div><p class="section-note">题目/任务数量只抽取上游明确写出的规模，单位可能混合，不用于质量排名；“大厂自研/发布评测集”与“大厂模型外部评测”严格分开，均不代表内部认可或背书。</p></div>
+          <div class="section-heading"><div><p class="eyebrow">SUBJECTS / SCALE / COMPANY EVIDENCE</p><h2 id="taxonomy-title">学科、规模与公司关系</h2></div><p class="section-note">区分发布/联合发布、公司官方报告使用、第三方模型测试与主体待核实。各关系允许重叠；暂无证据表示尚未登记，不代表不存在。</p></div>
           <div class="taxonomy-grid">
             <article class="taxonomy-card taxonomy-card-highlight"><div class="card-title"><span>题目 / 任务数量</span><span class="muted">可结构化字段</span></div><div id="question-summary"></div></article>
-            <article class="taxonomy-card"><div class="card-title"><span>学科分类</span><span class="muted">评测集数量</span></div><div id="subject-bars" class="taxonomy-list"></div></article>
-            <article class="taxonomy-card"><div class="card-title"><span>大厂关系类型</span><span id="major-company-summary" class="muted">加载中…</span></div><div id="major-company-bars" class="taxonomy-list"></div></article>
+            <article class="taxonomy-card"><div class="card-title"><span>领域与任务场景</span><span class="muted">评测集数量</span></div><div id="subject-bars" class="taxonomy-list"></div></article>
+            <article class="taxonomy-card"><div class="card-title"><span>公司关系与来源</span><span id="major-company-summary" class="muted">加载中…</span></div><div id="major-company-bars" class="taxonomy-list"></div><p>官方使用依据公司所属域名或已登记 GitHub/Hugging Face 账号；第三方测试依据明确的外部测试表述；其余待核实。规则分类尚非逐条重新认证，公司品牌仅作导航，发布团队以来源为准。</p></article>
           </div>
         </section>
 
