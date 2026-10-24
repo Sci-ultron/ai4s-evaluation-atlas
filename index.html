@@ -3,119 +3,161 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="AI4S Evaluation Atlas：面向科学模型与科研 Agent 的专业评测目录，提供领域、任务、模态、输入输出示意与官方证据入口。" />
-    <title>AI4S Evaluation Atlas · 科学模型评测地图</title>
+    <meta name="theme-color" content="#fafaf8" />
+    <meta name="description" content="AI4S Evaluation Atlas：探索科学模型与科研 Agent 的评测基准，按学科、能力与机构证据找到下一项实验。" />
+    <title>AI4S Atlas · 科学智能，逐一验证</title>
     <link rel="icon" type="image/svg+xml" href="favicon.svg" />
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="styles.css?v=709416d1b7a3" />
   </head>
   <body>
-    <div class="shell">
-      <header class="topbar">
-        <a class="brand" href="#top" aria-label="回到 AI4S Evaluation Atlas 首页">
-          <span class="brand-mark">∴</span>
-          <span><strong>AI4S</strong><small>Evaluation Atlas</small></span>
+    <a class="skip-link" href="#catalog">跳至评测目录</a>
+    <header class="site-header">
+      <div class="topbar shell">
+        <a class="brand" href="#top" aria-label="AI4S Atlas 首页">
+          <svg class="brand-mark" viewBox="0 0 36 36" fill="none" aria-hidden="true"><path d="m18 3 15 15-15 15L3 18Z" stroke="currentColor" stroke-width="1.5"/><path d="M18 10v16M10 18h16" stroke="currentColor" stroke-width="1.5"/><path d="M15 15h6v6h-6z" fill="currentColor"/></svg>
+          <span>AI4S <strong>Atlas</strong><small>Evaluation Index</small></span>
         </a>
-        <div class="topbar-meta">
-          <span class="status-dot"></span><span id="sync-status">Registry loading</span>
-          <a href="https://github.com/Sci-ultron/ai4s-evaluation-atlas" target="_blank" rel="noreferrer">GitHub ↗</a>
+        <nav class="main-nav" aria-label="主导航">
+          <a class="nav-frontier" href="#frontier">科研前沿</a>
+          <a class="nav-primary" href="#catalog">评测目录</a>
+          <a href="#evidence">覆盖与证据</a>
+          <a href="#suites">评测套件</a>
+        </nav>
+        <a class="header-github" href="https://github.com/Sci-ultron/ai4s-evaluation-atlas" target="_blank" rel="noreferrer">GitHub <span aria-hidden="true">↗</span></a>
+      </div>
+    </header>
+
+    <main id="top" class="shell">
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="hero-copy">
+          <p class="eyebrow"><span class="status-dot"></span> AN OPEN INDEX FOR SCIENTIFIC AI</p>
+          <h1 id="hero-title">科学智能，<br />逐一<span class="hero-word">验证<span class="pixel-period" aria-hidden="true"></span></span></h1>
+          <p class="lede">从科学问答到长程科研 Agent。<br class="mobile-break" />从 Terminal-Bench-Science 出发，<br class="desktop-break" />读懂科研轨迹、真实工作流与模型表现。</p>
+          <div class="hero-actions">
+            <a class="button button-primary" href="#frontier">探索科研前沿 <span aria-hidden="true">↗</span></a>
+            <button class="button button-ghost" id="download-catalog">下载目录 <span aria-hidden="true">↓</span></button>
+          </div>
+          <div class="hero-topics" aria-label="前沿专题入口"><a href="#frontier-data">轨迹数据 ↗</a><a href="#frontier-evaluations">长程评测 ↗</a><a href="#frontier-performance">模型表现 ↗</a></div>
         </div>
-      </header>
+        <aside id="hero-frontier" class="hero-frontier" aria-label="科研前沿焦点"><p class="eyebrow">RESEARCH TRAJECTORIES</p><p>正在读取前沿研究数据…</p></aside>
+      </section>
 
-      <main id="top">
-        <section class="hero">
-          <div class="hero-copy">
-            <p class="eyebrow">SCIENCE MODEL EVALUATION / PUBLIC ATLAS</p>
-            <h1>把科学能力拆开，<em>逐项测量。</em></h1>
-            <p class="lede">面向模型迭代、科研 Agent 和 AI4S 团队的评测地图。按领域、能力、工作流阶段、模态、开放性和证据等级定位真正可用的基准。</p>
-            <div class="hero-actions">
-              <a class="button button-primary" href="#catalog">浏览评测集 <span>↓</span></a>
-              <button class="button button-ghost" id="download-catalog">下载机器目录</button>
+      <section class="signal-strip" aria-label="目录概览">
+        <div class="signal-cell"><span id="hero-count">—</span><small>评测基准 <span>BENCHMARKS</span></small></div>
+        <div class="signal-cell"><span id="hero-domains">—</span><small>科学领域 <span>DOMAINS</span></small></div>
+        <div class="signal-cell"><span id="hero-suites">—</span><small>评测套件 <span>SUITES</span></small></div>
+        <div class="signal-cell"><span id="hero-orgs">—</span><small>关联机构 <span>ORGANIZATIONS</span></small></div>
+      </section>
+
+      <section id="frontier" class="frontier-section" aria-labelledby="frontier-title">
+        <div class="section-heading">
+          <div><p class="eyebrow"><span class="status-dot"></span> IN FOCUS / LONG-HORIZON SCIENCE</p><h2 id="frontier-title">从研究过程，到真实表现。</h2></div>
+          <div class="frontier-review"><span class="frontier-badge">编辑精选 · 非热度排名</span><span id="frontier-reviewed">正在核对来源…</span></div>
+        </div>
+        <nav class="frontier-jump" aria-label="科研前沿导航"><a href="#frontier-data"><span class="frontier-jump-title">01 / 科研轨迹数据 <b>↘</b></span><strong id="frontier-data-signal">—</strong><small>类本期精选过程数据</small></a><a href="#frontier-evaluations"><span class="frontier-jump-title">02 / 长程研究评测 <b>↘</b></span><strong id="frontier-benchmark-signal">—</strong><small id="frontier-benchmark-signal-label">任务规模以来源为准</small></a><a href="#frontier-performance"><span class="frontier-jump-title">03 / 模型与系统表现 <b>↘</b></span><strong id="frontier-score-signal">—</strong><small id="frontier-score-signal-label">公开报告成绩</small></a></nav>
+        <div id="frontier-data" class="frontier-block" aria-labelledby="frontier-data-title">
+          <div class="frontier-block-heading"><div><p class="eyebrow">PROCESS IS THE DATA</p><h3 id="frontier-data-title">不只看答案，也看研究如何发生。</h3></div><p>人类决策、合成构思与检索轨迹，<br />分别看待，保留原始口径。</p></div>
+          <div id="frontier-resources" class="frontier-resource-grid"></div>
+        </div>
+        <div id="frontier-evaluations" class="frontier-block" aria-labelledby="frontier-evaluations-title">
+          <div class="frontier-block-heading"><div><p class="eyebrow">TEST THE WHOLE RESEARCH LOOP</p><h3 id="frontier-evaluations-title">真正长程，测的是完整闭环。</h3></div><button class="frontier-catalog-link" data-frontier-catalog>查看总目录中的相关评测 ↗</button></div>
+          <div id="frontier-benchmarks" class="frontier-benchmark-grid"></div>
+        </div>
+        <div id="frontier-performance" class="frontier-block" aria-labelledby="frontier-performance-title">
+          <div class="frontier-block-heading"><div><p class="eyebrow">REPORTED RESULTS / SOURCE BY SOURCE</p><h3 id="frontier-performance-title">模型表现，要连同条件一起看。</h3></div><p>原作者公开报告 · 本站未复测<br />不同评测之间不合并排名。</p></div>
+          <div id="scoreboard-controls" class="scoreboard-controls" role="group" aria-label="选择成绩评测"></div>
+          <div class="scoreboard-layout"><div id="frontier-score-context" class="scoreboard-context"></div><div id="frontier-scores" class="scoreboard-results" aria-live="polite"></div></div>
+        </div>
+      </section>
+
+      <section class="atlas-section" id="catalog" aria-labelledby="catalog-title">
+        <div class="section-heading">
+          <div><p class="eyebrow">01 / EXPLORE THE ATLAS</p><h2 id="catalog-title">下一项实验，从这里开始。</h2></div>
+          <div class="registry-status"><span class="status-dot"></span><span id="sync-status" role="status">正在读取目录…</span></div>
+        </div>
+        <div id="quick-domains" class="quick-domains" role="group" aria-label="快速选择科学域">
+          <button data-quick-domain="" aria-pressed="true">全部评测 <span>↗</span></button>
+          <button data-quick-domain="General" aria-pressed="false">跨学科</button>
+          <button data-quick-domain="Agentic" aria-pressed="false">科研 Agent</button>
+          <button data-quick-domain="Biology" aria-pressed="false">生物</button>
+          <button data-quick-domain="Chemistry" aria-pressed="false">化学</button>
+          <button data-quick-domain="Physics" aria-pressed="false">物理</button>
+          <button data-quick-domain="Materials" aria-pressed="false">材料</button>
+        </div>
+        <div class="catalog-search" role="search">
+          <label class="sr-only" for="search">搜索名称、任务、论文</label>
+          <div class="search-wrap"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5" stroke="currentColor" stroke-width="1.4"/><path d="m13 13 4 4" stroke="currentColor" stroke-width="1.4"/></svg><input id="search" type="search" placeholder="搜索评测、任务或论文…" autocomplete="off" aria-keyshortcuts="/" /><kbd aria-hidden="true">/</kbd></div>
+          <button id="filter-toggle" class="filter-toggle" aria-controls="filters-panel" aria-expanded="false">筛选 <span aria-hidden="true">☷</span></button>
+        </div>
+        <div class="workbench">
+          <aside id="filters-panel" class="filters" aria-label="评测筛选">
+            <div class="filter-head"><span>精确筛选 <span class="filter-symbol" aria-hidden="true">⌘</span></span><button id="reset-filters">重置 ↺</button></div>
+            <p class="filter-intro">为你的研究，缩小范围。</p>
+            <div class="filter-group"><label for="domain-filter">科学领域 <span>01</span></label><select id="domain-filter"><option value="">全部科学域</option></select></div>
+            <div class="filter-group"><label for="family-filter">能力方向 <span>02</span></label><select id="family-filter"><option value="">全部能力层</option></select></div>
+            <div class="filter-group"><label for="mode-filter">评测范式 <span>03</span></label><select id="mode-filter"><option value="">全部范式</option></select></div>
+            <div class="filter-group"><label for="access-filter">访问边界 <span>04</span></label><select id="access-filter"><option value="">全部访问状态</option></select></div>
+            <div class="filter-group"><label for="year-filter">发布年份 <span>05</span></label><select id="year-filter"><option value="">全部年份</option></select></div>
+            <div class="filter-divider"></div>
+            <div class="filter-group"><label for="company-filter">模型公司 / 品牌</label><select id="company-filter"><option value="">全部公司</option></select></div>
+            <div class="filter-group"><label for="industry-filter">公司关系类型</label><select id="industry-filter"><option value="">全部关系</option><option value="released_by">公司发布/联合发布</option><option value="official_evaluation">公司官方报告使用</option><option value="external_evaluation">第三方测试其模型</option><option value="evaluation_unresolved">评测主体待核实</option></select></div>
+            <div class="filter-foot"><span>当前命中</span><strong id="result-count" aria-live="polite">—</strong></div>
+            <p class="filter-note">收录 ≠ 已下载或可直接运行。<br />访问和许可，以来源为准。</p>
+          </aside>
+          <div class="results-pane" id="results-scroll">
+            <div class="results-toolbar">
+              <div class="result-summary"><strong id="result-label">全部评测</strong><span id="result-context">正在加载…</span></div>
+              <div class="results-controls">
+                <select id="sort-filter" aria-label="排序"><option value="relevance">推荐排序</option><option value="year">最新年份</option><option value="name">名称 A–Z</option><option value="domain">科学领域</option></select>
+                <div class="view-switch" role="group" aria-label="显示方式"><button id="view-grid" aria-label="卡片视图" aria-pressed="true"><svg viewBox="0 0 18 18" aria-hidden="true"><path d="M2 2h5v5H2zm9 0h5v5h-5zM2 11h5v5H2zm9 0h5v5h-5z"/></svg></button><button id="view-list" aria-label="列表视图" aria-pressed="false"><svg viewBox="0 0 18 18" aria-hidden="true"><path d="M2 3h14v2H2zm0 5h14v2H2zm0 5h14v2H2z"/></svg></button></div>
+              </div>
             </div>
+            <div id="active-filters" class="active-filters" aria-label="已选筛选条件" hidden></div>
+            <div id="benchmark-list" class="benchmark-list" aria-live="polite"><div class="loading-state"><span class="loading-mark" aria-hidden="true">✳</span><p>正在展开科学评测地图…</p></div></div>
+            <noscript><p class="empty-state">请启用 JavaScript，以浏览和筛选评测目录。</p></noscript>
+            <div class="pagination"><span class="pagination-caption">KEEP EXPLORING</span><div><button id="prev-page" aria-label="上一页">←</button><span id="page-label">—</span><button id="next-page" aria-label="下一页">→</button></div></div>
           </div>
-          <div class="signal-card" aria-label="目录信号">
-            <div class="signal-grid">
-              <div class="signal-cell signal-large"><span id="hero-count">—</span><small>已登记评测</small></div>
-              <div class="signal-cell"><span id="hero-domains">—</span><small>科学域</small></div>
-              <div class="signal-cell"><span id="hero-suites">—</span><small>评测套件</small></div>
-              <div class="signal-cell"><span id="hero-orgs">—</span><small>机构/公司</small></div>
-            </div>
-            <div class="signal-foot"><span class="pulse"></span> evidence-first · revision-pinned · deduplicated</div>
-          </div>
-        </section>
+        </div>
+      </section>
 
-        <section class="guide-section" aria-labelledby="guide-title">
-          <div class="guide-intro">
-            <p class="eyebrow">HOW TO READ THE ATLAS</p>
-            <h2 id="guide-title">从“它测什么”到“怎么跑”</h2>
-            <p>每条记录都按同一套研究工作流拆解：先确认能力边界，再看输入输出形态、评分方式与访问限制，最后决定是否适合你的模型迭代。</p>
-          </div>
-          <div class="guide-steps">
-            <article class="guide-step"><span>01</span><div><strong>定位问题</strong><p>领域 · 子领域 · 能力轴</p></div></article>
-            <article class="guide-step"><span>02</span><div><strong>读懂任务</strong><p>输入模态 → 期望产物</p></div></article>
-            <article class="guide-step"><span>03</span><div><strong>核对证据</strong><p>论文 · 官方仓库 · 版本</p></div></article>
-            <article class="guide-step"><span>04</span><div><strong>评估可行性</strong><p>许可证 · 访问 · runner</p></div></article>
-          </div>
-        </section>
+      <section id="evidence" class="taxonomy-section" aria-labelledby="taxonomy-title">
+        <div class="section-heading"><div><p class="eyebrow">02 / THE BIGGER PICTURE</p><h2 id="taxonomy-title">看见覆盖，也看清边界。</h2></div><p class="section-note">学科、规模和机构关系各有证据。<br />发布、官方使用与第三方测试，分开看。</p></div>
+        <div class="kpi-row" id="kpi-row"></div>
+        <div class="taxonomy-grid">
+          <article class="taxonomy-card taxonomy-card-highlight"><div class="card-title"><span>规模的可见部分</span><span class="card-number">01</span></div><div id="question-summary"></div><div class="data-note"><span aria-hidden="true">↳</span> 保留原始单位，不将题目、样本和分子相加。</div></article>
+          <article class="taxonomy-card"><div class="card-title"><span>科学领域分布</span><span class="card-number">02</span></div><p class="card-subtitle">点击学科，继续探索</p><div id="subject-bars" class="taxonomy-list"></div></article>
+          <article class="taxonomy-card"><div class="card-title"><span>公司关系与来源</span><span class="card-number">03</span></div><div id="major-company-bars" class="taxonomy-list"></div><p id="major-company-summary" class="chart-footnote">正在读取…</p></article>
+        </div>
+        <p class="section-footnote">机构关系允许重叠；暂无证据表示尚未登记。官方使用依据所属域名或已登记账号分类，其余关系保留第三方或待核实标记。</p>
+      </section>
 
-        <section class="atlas-section" id="catalog">
-          <div class="section-heading">
-            <div><p class="eyebrow">THE ATLAS</p><h2>评测目录</h2></div>
-            <p class="section-note">分类由注册表字段可解释地推导；“收录”不等于“已下载”，访问边界和许可证始终保留。</p>
-          </div>
+      <section class="insights-section" aria-labelledby="capability-title">
+        <div class="section-heading"><div><p class="eyebrow">03 / CAPABILITY LANDSCAPE</p><h2 id="capability-title">能力，不止一个维度。</h2></div><p class="section-note">从理解问题到验证产物。<br />点击任一能力，找到相应基准。</p></div>
+        <div class="insight-grid">
+          <article class="insight-card"><div class="card-title"><span>能力轴</span><span class="muted">CAPABILITY</span></div><div id="capability-bars" class="bar-list"></div></article>
+          <article class="insight-card"><div class="card-title"><span>科研工作流</span><span class="muted">WORKFLOW</span></div><div id="workflow-bars" class="bar-list"></div></article>
+          <article class="insight-card"><div class="card-title"><span>证据强度</span><span class="muted">EVIDENCE</span></div><div id="evidence-bars" class="bar-list"></div></article>
+        </div>
+      </section>
 
-          <div class="kpi-row" id="kpi-row"></div>
+      <section id="suites" class="suites-section" aria-labelledby="suites-title">
+        <div class="section-heading"><div><p class="eyebrow">04 / CURATED COLLECTIONS</p><h2 id="suites-title">从一个问题，走向完整评测。</h2></div><p class="section-note">按研究目标组织基准。<br />选择一条路线，开始系统性探索。</p></div>
+        <div id="suite-list" class="suite-list"></div>
+      </section>
 
-          <div class="workbench">
-            <aside class="filters" aria-label="评测筛选">
-              <div class="filter-head"><span>筛选器</span><button id="reset-filters">重置</button></div>
-              <label class="search-label" for="search">搜索名称、任务、论文</label>
-              <div class="search-wrap"><span>⌕</span><input id="search" type="search" placeholder="例如：protein / agent / chemistry" autocomplete="off" /></div>
-              <div class="filter-group"><label for="domain-filter">科学域</label><select id="domain-filter"><option value="">全部科学域</option></select></div>
-              <div class="filter-group"><label for="family-filter">能力层</label><select id="family-filter"><option value="">全部能力层</option></select></div>
-              <div class="filter-group"><label for="mode-filter">评测范式</label><select id="mode-filter"><option value="">全部范式</option></select></div>
-              <div class="filter-group"><label for="access-filter">访问边界</label><select id="access-filter"><option value="">全部访问状态</option></select></div>
-              <div class="filter-group"><label for="year-filter">年份</label><select id="year-filter"><option value="">全部年份</option></select></div>
-              <div class="filter-group"><label for="company-filter">模型公司 / 品牌</label><select id="company-filter"><option value="">全部公司</option></select></div>
-              <div class="filter-group"><label for="industry-filter">公司关系类型</label><select id="industry-filter"><option value="">全部关系</option><option value="released_by">公司发布/联合发布</option><option value="official_evaluation">公司官方报告使用</option><option value="external_evaluation">第三方测试其模型</option><option value="evaluation_unresolved">评测主体待核实</option></select></div>
-              <div class="filter-divider"></div>
-              <div class="filter-foot"><span>当前命中</span><strong id="result-count">—</strong></div>
-            </aside>
+      <section class="guide-section" aria-labelledby="guide-title">
+        <div class="guide-intro"><p class="eyebrow">A NOTE ON THIS ATLAS</p><h2 id="guide-title">每一次测量，<br />都从证据开始。</h2><p>这是科学评测的导航地图。找到条目后，继续核对任务定义、官方来源与访问边界。</p></div>
+        <div class="guide-steps">
+          <article class="guide-step"><span>01</span><div><h3>定位能力</h3><p>确认科学领域、任务与能力边界。</p></div><span aria-hidden="true">↗</span></article>
+          <article class="guide-step"><span>02</span><div><h3>理解任务</h3><p>阅读输入、输出与原始评分协议。</p></div><span aria-hidden="true">↗</span></article>
+          <article class="guide-step"><span>03</span><div><h3>核对来源</h3><p>追溯论文、官方代码与数据版本。</p></div><span aria-hidden="true">↗</span></article>
+          <article class="guide-step"><span>04</span><div><h3>确认可用</h3><p>检查许可、访问条件与运行环境。</p></div><span aria-hidden="true">↗</span></article>
+        </div>
+      </section>
+    </main>
 
-            <div class="results-pane">
-              <div class="results-toolbar"><div><strong id="result-label">全部评测</strong><span id="result-context">加载中…</span></div><select id="sort-filter" aria-label="排序"><option value="relevance">相关度</option><option value="year">最新年份</option><option value="name">名称 A–Z</option><option value="domain">科学域</option></select></div>
-              <div id="benchmark-list" class="benchmark-list" aria-live="polite"></div>
-              <div class="pagination"><button id="prev-page" aria-label="上一页">←</button><span id="page-label">—</span><button id="next-page" aria-label="下一页">→</button></div>
-            </div>
-          </div>
-        </section>
-
-        <section class="taxonomy-section" aria-labelledby="taxonomy-title">
-          <div class="section-heading"><div><p class="eyebrow">SUBJECTS / SCALE / COMPANY EVIDENCE</p><h2 id="taxonomy-title">学科、规模与公司关系</h2></div><p class="section-note">区分发布/联合发布、公司官方报告使用、第三方模型测试与主体待核实。各关系允许重叠；暂无证据表示尚未登记，不代表不存在。</p></div>
-          <div class="taxonomy-grid">
-            <article class="taxonomy-card taxonomy-card-highlight"><div class="card-title"><span>题目 / 任务数量</span><span class="muted">可结构化字段</span></div><div id="question-summary"></div></article>
-            <article class="taxonomy-card"><div class="card-title"><span>领域与任务场景</span><span class="muted">评测集数量</span></div><div id="subject-bars" class="taxonomy-list"></div></article>
-            <article class="taxonomy-card"><div class="card-title"><span>公司关系与来源</span><span id="major-company-summary" class="muted">加载中…</span></div><div id="major-company-bars" class="taxonomy-list"></div><p>官方使用依据公司所属域名或已登记 GitHub/Hugging Face 账号；第三方测试依据明确的外部测试表述；其余待核实。规则分类尚非逐条重新认证，公司品牌仅作导航，发布团队以来源为准。</p></article>
-          </div>
-        </section>
-
-        <section class="insights-section">
-          <div class="section-heading"><div><p class="eyebrow">CAPABILITY MATRIX</p><h2>能力分布</h2></div><p class="section-note">快速识别当前评测矩阵覆盖与空白，点击标签即可带回目录筛选。</p></div>
-          <div class="insight-grid">
-            <article class="insight-card"><div class="card-title"><span>能力轴</span><span class="muted">按评测计数</span></div><div id="capability-bars" class="bar-list"></div></article>
-            <article class="insight-card"><div class="card-title"><span>工作流阶段</span><span class="muted">从问题到复现</span></div><div id="workflow-bars" class="bar-list"></div></article>
-            <article class="insight-card"><div class="card-title"><span>证据强度</span><span class="muted">可追溯性</span></div><div id="evidence-bars" class="bar-list"></div></article>
-          </div>
-        </section>
-
-        <section class="suites-section">
-          <div class="section-heading"><div><p class="eyebrow">CURATED ROUTES</p><h2>评测套件</h2></div><p class="section-note">把单项基准组合成可持续跑的模型迭代路线。</p></div>
-          <div id="suite-list" class="suite-list"></div>
-        </section>
-      </main>
-
-      <footer class="footer"><span>AI4S Evaluation Atlas</span><span id="footer-meta">科学评测注册表</span><a href="https://github.com/Sci-ultron/ai4s-evaluation-atlas" target="_blank" rel="noreferrer">维护与贡献 ↗</a></footer>
-    </div>
-    <div id="detail-drawer" class="drawer" aria-hidden="true"><div class="drawer-backdrop" data-close-drawer></div><aside class="drawer-panel"><button class="drawer-close" data-close-drawer aria-label="关闭详情">×</button><div id="drawer-content"></div></aside></div>
-    <script src="app.js" defer></script>
+    <footer class="footer shell"><div class="footer-brand"><strong>AI4S Atlas</strong><p>Measure what matters.<br />Understand what comes next.</p></div><div class="footer-meta"><span id="footer-meta">科学评测导航 · 官方证据优先</span><a href="https://github.com/Sci-ultron/ai4s-evaluation-atlas" target="_blank" rel="noreferrer">维护与贡献 ↗</a><a href="#top">回到顶部 ↑</a></div><p class="footer-fineprint">来源、许可及计数口径以各条目为准。目录分类为规则派生，未经逐条人工认证。</p></footer>
+    <div id="detail-drawer" class="drawer" aria-hidden="true"><div class="drawer-backdrop" data-close-drawer></div><aside class="drawer-panel"><div class="drawer-topline"><span>AI4S / BENCHMARK NOTES</span><button class="drawer-close" data-close-drawer aria-label="关闭详情">关闭 <span aria-hidden="true">×</span></button></div><div id="drawer-content"></div></aside></div>
+    <script src="app.js?v=9099db6acf28" defer></script>
   </body>
 </html>
