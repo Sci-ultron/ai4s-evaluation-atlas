@@ -4,13 +4,13 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#fafaf8" />
-    <meta name="description" content="面向大模型与 AI4S 团队的科学评测工作台：查公开成绩、比较模型与运行框架、选择评测并整理结果。" />
-    <title>AI4S Atlas · 科学 AI 评测与成绩中心</title>
+    <meta name="description" content="以 Terminal-Bench-Science 为核心的科学 AI 评测工作台：查看官方模型成绩、学科差异与逐任务结果，选择评测并按官方协议运行。" />
+    <title>Terminal-Bench-Science 成绩与任务 · AI4S Atlas</title>
     <link rel="icon" type="image/svg+xml" href="favicon.svg?v=d7034d7647aa" />
-    <link rel="stylesheet" href="styles.css?v=27e702bb092b" />
+    <link rel="stylesheet" href="styles.css?v=66222c84cb91" />
   </head>
   <body>
-    <a class="skip-link" href="#catalog">跳至评测目录</a>
+    <a class="skip-link" href="#results">跳至评测成绩</a>
     <header class="site-header">
       <div class="topbar shell">
         <a class="brand" href="#top" aria-label="AI4S Atlas 首页">
@@ -18,7 +18,7 @@
           <span>AI4S <strong>Atlas</strong><small>Scientific AI Benchmarks</small></span>
         </a>
         <nav class="main-nav" aria-label="主导航">
-          <a class="nav-primary" href="#results">成绩中心</a>
+          <a class="nav-primary" href="#results" data-tbs-view="bars">TB-Science</a>
           <a href="#catalog">选择评测</a>
           <a href="#evaluate">开始评测</a>
           <a class="nav-frontier" href="#frontier">科研前沿</a>
@@ -30,15 +30,16 @@
     <main id="top" class="shell">
       <section class="hero" aria-labelledby="hero-title">
         <div class="hero-copy">
-          <p class="eyebrow"><span class="status-dot"></span> THE WORKSPACE FOR SCIENTIFIC AI EVALUATION</p>
-          <h1 id="hero-title">科学 AI，<br />一起<span class="hero-word">验证<span class="pixel-period" aria-hidden="true"></span></span></h1>
-          <p class="lede">面向大模型公司、AI4S 团队与研究者。<br />查公开成绩，选择科学任务，<br class="desktop-break" />按官方协议评测，让结果可以追溯、比较与复核。</p>
+          <p class="eyebrow"><span class="status-dot"></span> IN FOCUS / TERMINAL-BENCH-SCIENCE</p>
+          <h1 id="hero-title" class="tbs-hero-title"><span>Terminal-Bench-</span><br /><span class="hero-word">Science<span class="pixel-period" aria-hidden="true"></span></span></h1>
+          <p class="tbs-hero-subtitle">科学 Agent，放进真实任务。</p>
+          <p class="lede">以 Terminal-Bench-Science 为核心，<br />面向大模型公司、AI4S 团队与研究者。<br class="desktop-break" />从模型总分到学科与任务差异，连同运行条件一起看。</p>
           <div class="hero-actions">
-            <a class="button button-primary" href="#results">查看模型成绩 <span aria-hidden="true">↗</span></a>
-            <a class="button button-ghost" href="#evaluate">开始一次评测 <span aria-hidden="true">→</span></a>
+            <a class="button button-primary" href="#results" data-tbs-view="bars">查看官方成绩 <span aria-hidden="true">↗</span></a>
+            <a class="button button-ghost" href="#evaluate" data-eval-start="terminal-bench-science-scientific-agent-benchmark">运行 TB-Science <span aria-hidden="true">→</span></a>
             <button class="button button-ghost catalog-download" id="download-catalog">下载目录 <span aria-hidden="true">↓</span></button>
           </div>
-          <div class="hero-topics" aria-label="快速入口"><a href="#catalog">科学基准目录 ↗</a><a href="#suites">按目标选套件 ↗</a><a href="#score-visuals-app" data-score-jump="heatmap">模型 × 基准 ↗</a></div>
+          <div class="hero-topics" aria-label="Terminal-Bench-Science 快速入口"><a href="#results" data-tbs-view="bars">官方模型榜 ↗</a><a href="#score-visuals-app" data-tbs-view="tasks">70 任务热图 ↗</a><a href="#evaluate" data-eval-start="terminal-bench-science-scientific-agent-benchmark">评测协议与提交 ↗</a></div>
           <div class="hero-signal" aria-labelledby="hero-signal-title">
   <div class="hero-signal-heading">
     <div><span class="signal-overline">THE SCIENTIFIC LOOP</span><h2 id="hero-signal-title">从任务，到可复核的证据。</h2></div>
@@ -79,7 +80,7 @@
   <p class="signal-note" id="motion-status">流程示意 · 非实时评测</p>
 </div>
         </div>
-        <aside id="hero-frontier" class="hero-frontier" aria-label="科研前沿焦点"><p class="eyebrow">RESEARCH TRAJECTORIES</p><p>正在读取前沿研究数据…</p></aside>
+        <aside id="hero-frontier" class="hero-frontier" aria-label="Terminal-Bench-Science 焦点"><p class="eyebrow">TERMINAL-BENCH-SCIENCE</p><p>正在读取官方评测数据…</p></aside>
       </section>
 
       <section class="signal-strip" aria-label="目录概览">
@@ -91,11 +92,11 @@
 
       <section id="results" class="platform-section results-section" aria-labelledby="results-title">
         <div class="section-heading">
-          <div><p class="eyebrow">01 / PUBLIC EVALUATION RESULTS</p><h2 id="results-title">成绩，连同条件一起看。</h2></div>
-          <p class="section-note">同一模型，在不同运行框架下分别记录。<br />选定评测后比较，每一个分数都有出处。</p>
+          <div><p class="eyebrow">01 / TERMINAL-BENCH-SCIENCE &amp; BEYOND</p><h2 id="results-title">先看 TB-Science，再展开科学评测。</h2></div>
+          <p class="section-note">官方榜与 AA 独立评测分别查看。<br />保留模型、运行框架、推理配置与原始来源。</p>
         </div>
         <div id="results-app"><p class="loading-state">正在整理公开评测成绩…</p></div>
-        <details class="platform-methodology"><summary>这些成绩如何组织？</summary><p>我们参考 <a href="https://benchmarks.bio/" target="_blank" rel="noreferrer">benchmarks.bio ↗</a>，将模型与运行框架作为独立配置，逐项展示基准成绩，分开呈现能力与安全评估。缺失结果保留为空，不与 0 分混淆。不同版本、协议和指标的成绩分别查看；成绩中心不计算跨基准综合分。</p><p>已收录成绩来自原作者或独立评测机构的公开报告。每张表保留原始来源、成绩日期或核对日期和评测条件；本站整理展示，是否复测以具体记录为准。</p></details>
+        <details class="platform-methodology"><summary>这些成绩如何组织？</summary><p>Terminal-Bench-Science 是当前主评测入口；官方榜与 Artificial Analysis（AA）评测保留各自的协议、模型配置和指标，分别比较。生物、化学等科学评测作为扩展专题继续收录。</p><p>我们参考 <a href="https://benchmarks.bio/" target="_blank" rel="noreferrer">benchmarks.bio ↗</a>，将模型与运行框架作为独立配置，逐项展示基准成绩，分开呈现能力与安全评估。缺失结果保留为空，不与 0 分混淆。不同版本、协议和指标的成绩分别查看；成绩中心不计算跨基准综合分。</p><p>已收录成绩来自原作者或独立评测机构的公开报告。每张表保留原始来源、成绩日期或核对日期和评测条件；本站整理展示，是否复测以具体记录为准。</p></details>
       </section>
 
       <section class="atlas-section" id="catalog" aria-labelledby="catalog-title">
@@ -215,6 +216,6 @@
 
     <footer class="footer shell"><div class="footer-brand"><a class="footer-signature" href="#top" aria-label="AI4S Atlas 首页"><svg class="brand-mark atlas-coordinate-mark" viewBox="0 0 64 64" fill="none" aria-hidden="true"><g class="mark-frame" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="square" stroke-linejoin="miter"><path class="mark-frame-nw" d="M8 22V8h14"/><path class="mark-frame-ne" d="M42 8h14v14"/><path class="mark-frame-se" d="M56 42v14H42"/><path class="mark-frame-sw" d="M22 56H8V42"/></g><path class="mark-core" fill="currentColor" fill-rule="evenodd" d="M19 44 29.3 19h5.4L45 44h-7.2l-2-5.6h-7.6L26.2 44H19Zm11.4-11.8h3.2L32 27.4l-1.6 4.8Z"/><rect class="mark-accent" x="52.5" y="4.5" width="7" height="7" fill="#61766a"/></svg><strong>AI4S <em>Atlas</em></strong></a><p>Measure what matters.<br />Understand what comes next.</p></div><div class="footer-meta"><span id="footer-meta">科学 AI 评测与公开成绩 · 官方证据优先</span><a href="https://github.com/Sci-ultron/ai4s-evaluation-atlas" target="_blank" rel="noreferrer">维护与贡献 ↗</a><a href="#top">回到顶部 ↑</a></div><p class="footer-fineprint">成绩与目录均保留来源和版本；缺失信息明确标注。评测在参与者自己的环境执行，公开提交经审核后收录。目录分类为规则派生。</p><details class="branding-credits"><summary>图表与标识来源</summary><div id="brand-credits-body"></div></details></footer>
     <div id="detail-drawer" class="drawer" aria-hidden="true"><div class="drawer-backdrop" data-close-drawer></div><aside class="drawer-panel"><div class="drawer-topline"><span>AI4S / BENCHMARK NOTES</span><button class="drawer-close" data-close-drawer aria-label="关闭详情">关闭 <span aria-hidden="true">×</span></button></div><div id="drawer-content"></div></aside></div>
-    <script src="app.js?v=f4cb231756ed" defer></script>
+    <script src="app.js?v=6ac53f0a8d2d" defer></script>
   </body>
 </html>

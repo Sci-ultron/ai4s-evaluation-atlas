@@ -131,7 +131,7 @@ async function boot(payload) {
   const document={ body: { style: {} }, activeElement: null, listeners: {},
     getElementById: id => { assert.ok(nodes.has(id), `Missing DOM id ${id}`); return nodes.get(id); },
     createElement: tag => {const node=element(tag);node.document=document;return node;},
-    querySelector: selector => nodes.get(selector.startsWith('#')?selector.slice(1):selector),
+    querySelector: selector => nodes.get(selector.startsWith('#')?selector.slice(1):selector)||nodes.get('results-app')?.querySelector(selector),
     querySelectorAll: selector => selector==='[data-quick-domain]'?quickDomains:selector==='[data-scoreboard]'?scoreboardButtons():selector==='[data-frontier-catalog]'?frontierCatalogButtons:selector==='.drawer-panel button,.drawer-panel a'?[nodes.get('.drawer-close'),nodes.get('.drawer-last-link')]:[],
     addEventListener(name,fn) { (this.listeners[name]??=[]).push(fn); },
     dispatch(name,event) { for(const fn of this.listeners[name]||[])fn(event); },
@@ -175,7 +175,8 @@ assert.match(featuredHero,/68.1%/);
 assert.match(featuredHero,/GPT-6 Astra/);
 assert.match(featuredHero,/Codex/);
 assert.match(featuredHero,/max/);
-assert.match(featuredHero,/2026-09-23/);
+assert.match(featuredHero,/来源更新 2026-09-23/);
+assert.match(featuredHero,/运行日期未披露/);
 assert.match(featuredHero,/data-detail="terminal-bench-science-scientific-agent-benchmark"/);
 assert.match(featuredHero,/data-open-scoreboard="terminal-bench-science-official"/);
 assert.ok(featuredHero.includes(featuredBoard.source.label),'Hero exposes the source label for its score');
@@ -456,7 +457,43 @@ assert.equal(vm.runInContext('hubScore({score:0,unit:"%",decimals:2})',context),
 assert.equal(vm.runInContext('hubScore({score:null,unit:"%",decimals:2})',context),'—');
 assert.equal(vm.runInContext('hubScore({score:NaN,unit:"%"})',context),'—');
 assert.equal(vm.runInContext('hubScore({score:0.4809,unit:"",decimals:4})',context),'0.4809','Native metric units are not converted to pass rates');
-assert.equal(vm.runInContext('hubCurrentBoard().id',context),resultModel.boards.find(board=>board.id==='bio-v1-spatialbench')?.id||resultModel.boards[0].id);
+assert.equal(vm.runInContext('hubCurrentBoard().id',context),'frontier::'+catalog.frontier.featured.scoreboard_id,'The score centre defaults to the canonical featured benchmark');
+assert.equal(resultModel.boards[0].id,vm.runInContext('hubCurrentBoard().id',context),'The featured protocol is the first board option');
+assert.equal(vm.runInContext('hubCurrentBoard().id',configuredApp.context),'frontier::protocol-b','Featured configuration governs both the hero and result explorer');
+assert.equal(vm.runInContext('hubCurrentBoard().id',missingFeatureApp.context),vm.runInContext('hubModel.boards[0].id',missingFeatureApp.context),'Missing configuration falls back to the first available board');
+const tbsSource=catalog.frontier.scoreboards.find(board=>board.id==='terminal-bench-science-official');
+const tbsRows=resultModel.rows.filter(row=>row.board_id==='frontier::terminal-bench-science-official');
+assert.equal(tbsRows.length,tbsSource.rows.length);
+for(const sourceRow of tbsSource.rows.filter(row=>row.model&&row.agent)){
+  const normalized=tbsRows.find(row=>row.source_row_id===sourceRow.id);
+  assert.equal(normalized.model,sourceRow.model);
+  assert.equal(normalized.provider,sourceRow.provider);
+  assert.equal(normalized.harness,sourceRow.agent);
+  assert.equal(normalized.effort,sourceRow.reasoning_effort);
+  assert.equal(normalized.configuration_label,sourceRow.system);
+  assert.equal(normalized.trial_count,tbsSource.task_count*tbsSource.trials_per_task);
+  assert.equal(context.hubCoverage(normalized),`${tbsSource.task_count} 任务 × ${tbsSource.trials_per_task} 次试验`);
+}
+assert.ok(resultRoot.querySelector('[data-hub-board="frontier::terminal-bench-science-aa"]'),'AA remains a separately accessible protocol');
+const chartRoot=resultRoot.querySelector('#score-visuals-app');
+assert.match(chartRoot.innerHTML,/成绩排行/,'The actual chart renderer mounts during normal initialization');
+if(tbsSource.task_matrix){
+  const exportedTbs=context.hubExportDocument(tbsRows.slice(0,2),resultModel.boards[0]);
+  assert.equal(Object.keys(exportedTbs.board.task_matrix.rows).length,2,'Filtered JSON export keeps only the selected population of task rows');
+  assert.equal(exportedTbs.board.task_matrix.tasks.length,tbsSource.task_count);
+  assert.match(context.hubCsv(tbsRows.slice(0,1)),/"standard_error","standard_error_unit","passes"/,'CSV retains source uncertainty and task-trial counts');
+  chartRoot.dispatch('click',{target:chartRoot.querySelector('[data-score-tab="tasks"]')});
+  assert.match(chartRoot.innerHTML,/tbs-task-matrix/,'Official task tab renders through its actual event handler');
+  const domainControl=chartRoot.querySelector('[data-score-domain]');domainControl.value='earth';
+  chartRoot.dispatch('change',{target:domainControl});
+  assert.equal(vm.runInContext('scoreVisualState.tbsDomain',context),'earth');
+  assert.match(chartRoot.innerHTML,/Terminal-Bench-Science 逐任务热图/);
+  chartRoot.dispatch('click',{target:chartRoot.querySelector('[data-score-tab="difference"]')});
+  assert.match(chartRoot.innerHTML,/A − B 成功次数/,'Difference tab has exact task counts as well as percentage-point deltas');
+  click({tbsView:'bars'});
+  assert.equal(vm.runInContext('scoreVisualState.tab',context),'bars','Primary navigation returns to the official ranking');
+  assert.equal(vm.runInContext('hubCurrentBoard().id',context),'frontier::terminal-bench-science-official');
+}
 const resultQuery=resultRoot.querySelector('[data-hub-field="query"]');
 resultQuery.focus();resultQuery.value='no-such-model-in-the-result-explorer';resultRoot.dispatch('input',{target:resultQuery});
 assert.equal(vm.runInContext('hubFilteredRows().length',context),0);
@@ -568,7 +605,7 @@ assert.equal(vm.runInContext('evaluationPlanState.submission[0].model',context),
 
 // Append within check-site.mjs before its final console.log; use its actual app VM.
 const chartTestModel=context.buildEvaluationHub(catalog);
-const chartTestBase=chartTestModel.boards.find(board=>!board.legacy&&board.assessment==='capabilities'&&board.unit==='%');
+const chartTestBase=chartTestModel.boards.find(board=>catalog.evaluation_hub.benchmarks.some(item=>item.id===board.id)&&board.assessment==='capabilities'&&board.unit==='%');
 assert.ok(chartTestBase,'A reviewed capability source backs the cross-task charts');
 const chartTestState={board:chartTestBase.id,assessment:'capabilities',query:'',harness:'',sort:'score-desc',selected:new Set()};
 const chartTestHeat=context.prepareHeatmap(chartTestModel,chartTestState);
@@ -650,5 +687,42 @@ assert.doesNotMatch(context.renderBrandText('anthropic principle and a mistral w
 assert.match(context.renderBrandText("Perplexity's published report"),/company-logo/);
 assert.equal(context.brandForLabel('o1-high / BasicAgent').id,'openai');
 assert.equal(context.brandForLabel('Qwen3.8-Max').id,'qwen');
+
+
+// TBS source and task semantics execute in the production application context.
+context.assert=assert;
+vm.runInContext(String.raw`
+// Append within the existing site-check VM, after actual app functions are loaded.
+{
+  const testTasks=[{id:'zero-task',domain:'life'},{id:'second-task',domain:'earth'},{id:'missing-task',domain:'engineering'}];
+  const testBoard={id:'frontier::terminal-bench-science-official',task_count:3,trials_per_task:3,task_matrix:{tasks:testTasks,rows:{
+    a:{'zero-task':{solved:0,total:3},'second-task':{solved:3,total:3}},
+    b:{'zero-task':{solved:0,total:3},'second-task':{solved:1,total:3},'missing-task':{solved:0,total:3}},
+    invalid:{'zero-task':{solved:-1,total:3},'second-task':{solved:4,total:3},'missing-task':{solved:0,total:0}}
+  }}};
+  const a={source_row_id:'a',configuration_id:'a',source_id:'tbs',model:'Model A',harness:'Codex',effort:'max',configuration_label:'Model A / Codex / max',score:50,domain_metrics:{life:{accuracy:0,passes:0,tasks:3,accuracy_stderr:0},earth:{accuracy:100,passes:3,tasks:3,accuracy_stderr:0}}};
+  const b={...a,source_row_id:'b',configuration_id:'b',model:'Model B',score:16.6666667,configuration_label:'Model B / Codex / max',domain_metrics:{life:{accuracy:0,passes:0,tasks:3,accuracy_stderr:0},earth:{accuracy:33.3333333,passes:1,tasks:3,accuracy_stderr:12}}};
+  assert(isTbsOfficialBoard(testBoard),'Official TBS data enables its task visuals');
+  assert(!isTbsOfficialBoard({...testBoard,id:'frontier::terminal-bench-science-artificial-analysis'}),'AA is not mixed into the official task matrix');
+  assert(tbsTaskOutcome(testBoard,a,testTasks[0]).solved===0,'A real zero remains zero');
+  assert(tbsTaskOutcome(testBoard,a,testTasks[2])===null,'Missing task outcome remains missing');
+  assert(testTasks.every(task=>tbsTaskOutcome(testBoard,{source_row_id:'invalid'},task)===null),'Invalid counts never become chart values');
+  assert(tbsDomainValue(a,'life').score===0&&tbsDomainValue(a,'physical')===null,'Domain zero and absent domain remain distinct');
+  const comparison=tbsTaskComparison(testBoard,a,b);
+  assert(comparison.aMore===1&&comparison.bMore===0&&comparison.equal===1&&comparison.missing===1,'Task comparison includes shared zero ties and excludes missing cells');
+  assert(tbsTaskComparison(testBoard,a,b,'earth').tasks.length===1,'Domain filtering uses source task membership');
+  const oldAllHeatmap=scoreVisualState.allHeatmap,oldDomain=scoreVisualState.tbsDomain,oldPairA=scoreVisualState.pairA,oldPairB=scoreVisualState.pairB;
+  scoreVisualState.allHeatmap=false;scoreVisualState.tbsDomain='';scoreVisualState.pairA=hubConfigurationKey(a);scoreVisualState.pairB=hubConfigurationKey(b);
+  const selected=tbsVisibleConfigurations([a,b],{selected:new Set([hubConfigurationKey(b)])});
+  assert(selected.visible.length===1&&selected.visible[0]===b,'Selected configuration takes precedence within the current filtered rows');
+  const taskMarkup=scoreVisualTbsTasksMarkup(testBoard,[a,b],{selected:new Set()});
+  assert(taskMarkup.includes('0/3')&&taskMarkup.includes('is-missing')&&taskMarkup.includes('tabindex="0"'),'Task heatmap exposes zero, missing state and keyboard focus');
+  const domainMarkup=scoreVisualTbsDomainsMarkup(testBoard,[a,b],{selected:new Set()});
+  assert(domainMarkup.includes('0.0%')&&domainMarkup.includes('0 / 3 次')&&domainMarkup.includes('±0.0 SE'),'Domain heatmap preserves source denominator and zero standard error');
+  const deltaMarkup=scoreVisualTbsDifferenceMarkup(testBoard,[a,b],{selected:new Set()});
+  assert(deltaMarkup.includes('+33.33')&&deltaMarkup.includes('百分点')&&deltaMarkup.includes('A − B 成功次数'),'TBS difference view separates percentage-point differences from task count differences');
+  scoreVisualState.allHeatmap=oldAllHeatmap;scoreVisualState.tbsDomain=oldDomain;scoreVisualState.pairA=oldPairA;scoreVisualState.pairB=oldPairB;
+}
+`,context);
 
 console.log(`[OK] ${catalog.benchmark_count} benchmarks; contract, assets, search, filters, chips, views, mobile filters, pagination, shortcuts, details, frontier resources, isolated score protocols, safe sources, curated selection, fallback, error state, result explorer normalization, live filters, 0/null, protocol/source separation, comparison, CSV safety, company marks, scoped charts and score deltas`);

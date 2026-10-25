@@ -183,6 +183,7 @@ function renderScoreboard(id){
   const score=(row,column)=>frontierScore(row.values?.[column.key],column)??'<span class="score-unavailable" aria-label="未报告">—</span>';
   if(scores)scores.innerHTML=columns.length&&rows.length?`<div class="frontier-table-wrap" role="region" tabindex="0" aria-label="${esc((board.name||'模型表现')+'，可横向滚动')}"><table class="frontier-score-table"><caption>${esc(board.name||'模型表现')} · 公开报告结果</caption><thead><tr><th scope="col">模型 / 系统</th>${columns.map(column=>`<th scope="col">${esc(column.label||column.key)}${column.unit?` <span>(${esc(column.unit)})</span>`:''}</th>`).join('')}</tr></thead><tbody>${rows.map(row=>`<tr><th scope="row" class="score-system">${esc(row.system)}</th>${columns.map(column=>`<td>${score(row,column)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`:'<p class="frontier-empty">此评测的成绩明细待核实，请查看官方来源。</p>';
 }
+function frontierResultDate(board){return [board?.score_date?'成绩日期 '+board.score_date:'运行日期未披露',board?.source_updated_at?'来源更新 '+String(board.source_updated_at).slice(0,10):'',board?.retrieved_at?'本站核对 '+String(board.retrieved_at).slice(0,10):''].filter(Boolean).join(' · ')}
 function renderFrontier(){
   const frontier=data?.frontier,section=$('frontier'),hero=$('hero-frontier');
   const resources=list(frontier?.resources).filter(resource=>resource&&typeof resource.title==='string');
@@ -199,7 +200,7 @@ function renderFrontier(){
   if(hero){
     hero.hidden=!featuredBenchmark&&!resources.length;
     const resource=resources[0];
-    if(featuredBenchmark)hero.innerHTML=`<div class="hero-frontier-top"><p class="eyebrow">SCIENTIFIC TERMINAL AGENTS</p><span class="frontier-badge">核心科学终端评测</span></div><div class="hero-frontier-scale"><strong>${esc(featuredBenchmark.scale??'待核实')}</strong><span>${esc(featuredBenchmark.unit||'任务规模待核实')}</span></div><h2>${esc(featuredBenchmark.name)}</h2><p class="hero-frontier-summary">${esc(featuredBenchmark.description||'评测说明待核实')}</p><div class="hero-feature-score"><strong>${esc(focusScore??'—')}</strong><div><span>${esc(focusBoard?.name||'成绩来源待核实')} · ${esc(focusColumn?.label||'指标待核实')}</span><p>${esc(focusSystem?.system||'模型配置未报告')}</p><small>${esc(focusBoard?.score_date?'成绩截至 '+focusBoard.score_date:'原报告未披露成绩日期')}</small></div></div><div class="hero-feature-actions">${existing.has(featuredBenchmark.benchmark_id)?`<button data-detail="${esc(featuredBenchmark.benchmark_id)}">查看评测详情 <span aria-hidden="true">↗</span></button>`:''}<a href="#frontier-performance"${focusBoard?` data-open-scoreboard="${esc(focusBoard.id)}"`:''}>查看模型成绩 <span aria-hidden="true">↘</span></a></div><div class="hero-frontier-bottom"><div class="frontier-sources">${frontierSources(heroSources)}</div></div>`;
+    if(featuredBenchmark)hero.innerHTML=`<div class="hero-frontier-top"><p class="eyebrow">SCIENTIFIC TERMINAL AGENTS</p><span class="frontier-badge">核心科学终端评测</span></div><div class="hero-frontier-scale"><strong>${esc(featuredBenchmark.scale??'待核实')}</strong><span>${esc(featuredBenchmark.unit||'任务规模待核实')}</span></div><h2>${esc(featuredBenchmark.name)}</h2><p class="hero-frontier-summary">${esc(featuredBenchmark.description||'评测说明待核实')}</p><div class="hero-feature-score"><strong>${esc(focusScore??'—')}</strong><div><span>${esc(focusBoard?.name||'成绩来源待核实')} · ${esc(focusColumn?.label||'指标待核实')}</span><p>${esc(focusSystem?.system||'模型配置未报告')}</p><small>${esc(frontierResultDate(focusBoard))}</small></div></div><div class="hero-feature-actions">${existing.has(featuredBenchmark.benchmark_id)?`<button data-detail="${esc(featuredBenchmark.benchmark_id)}">查看评测详情 <span aria-hidden="true">↗</span></button>`:''}<a href="#results"${focusBoard?` data-results-benchmark="${esc('frontier::'+focusBoard.id)}" data-open-scoreboard="${esc(focusBoard.id)}"`:''}>查看模型成绩 <span aria-hidden="true">↘</span></a></div><div class="hero-frontier-bottom"><div class="frontier-sources">${frontierSources(heroSources)}</div></div>`;
     else if(resource)hero.innerHTML=`<div class="hero-frontier-top"><p class="eyebrow">RESEARCH TRAJECTORIES</p><span class="frontier-badge">${esc(resource.badge||resource.kind||'科研数据')}</span></div><div class="hero-frontier-scale"><strong>${esc(resource.scale?.value??'待核实')}</strong><span>${esc(resource.scale?.unit||'规模待核实')}</span></div><h2>${esc(resource.title)}</h2><p class="hero-frontier-summary">${esc(resource.summary||'资源说明待核实')}</p><div class="hero-frontier-bottom"><a href="#frontier-data">探索科研轨迹 <span aria-hidden="true">↘</span></a><div class="frontier-sources">${frontierSources(list(resource.sources).slice(0,1))}</div></div>`;
     else hero.innerHTML='';
   }
@@ -224,7 +225,7 @@ function renderFrontier(){
   for(const button of document.querySelectorAll('[data-frontier-catalog]'))button.disabled=!available;
 }
 // Reviewed scores only: every visual keeps source, version, assessment and units intact.
-const scoreVisualState={tab:'bars',allBars:false,allHeatmap:false,pairA:'',pairB:'',scope:''};
+const scoreVisualState={tab:'bars',allBars:false,allHeatmap:false,pairA:'',pairB:'',scope:'',tbsDomain:''};
 function scoreConfigurationKey(row){return `${row.source_id||row.board_id}::${row.configuration_id||row.id}`}
 function scoreScopeKey(board){return JSON.stringify([board?.source_id,board?.version,board?.assessment,board?.metric,board?.unit||'',board?.protocol||board?.source?.protocol||''])}
 function scoreChartUncertainty(row,board){
@@ -244,8 +245,8 @@ function prepareHeatmap(model,state){
   if(!current)return {boards:[],configurations:[],cells:[],scope:'',domain:{min:0,max:100,unit:'%',ticks:[0,25,50,75,100]}};
   const scope=scoreScopeKey(current),boards=model.boards.filter(board=>scoreScopeKey(board)===scope);
   const ids=new Set(boards.map(board=>board.id)),query=String(state.query||'').trim().toLowerCase();
-  const sourceRows=model.rows.filter(row=>ids.has(row.board_id)&&(!state.harness||row.harness===state.harness)&&(!query||[row.model,row.provider,row.harness].join(' ').toLowerCase().includes(query)));
-  const configurations=[...new Map(sourceRows.map(row=>[scoreConfigurationKey(row),{key:scoreConfigurationKey(row),model:row.model,harness:row.harness,provider:row.provider}])).values()];
+  const sourceRows=model.rows.filter(row=>ids.has(row.board_id)&&(!state.harness||row.harness===state.harness)&&(!query||hubSearchText(row).includes(query)));
+  const configurations=[...new Map(sourceRows.map(row=>[scoreConfigurationKey(row),{key:scoreConfigurationKey(row),model:row.model,harness:row.harness,provider:row.provider,effort:row.effort}])).values()];
   const currentScores=new Map(sourceRows.filter(row=>row.board_id===current.id).map(row=>[scoreConfigurationKey(row),row.score]));
   configurations.sort((a,b)=>{
     if(state.sort==='model')return a.model.localeCompare(b.model)||a.harness.localeCompare(b.harness);
@@ -294,7 +295,7 @@ function scoreVisualBarMarkup(board,rows){
     const numeric=typeof row.score==='number'&&Number.isFinite(row.score),position=numeric?100*(row.score-domain.min)/range:zero,error=numeric?scoreChartUncertainty(row,board):null;
     const uncertainty=error?`<span class="score-error-line" style="left:${100*(row.score-error.value-domain.min)/range}%;width:${200*error.value/range}%" aria-hidden="true"></span>`:'';
     const errorLabel=error?`<small>± ${esc(error.value.toLocaleString('en-US',{maximumFractionDigits:error.decimals}))} 标准误<br>(${esc(error.unit)})</small>`:'';
-    return `<div class="score-bar-row" role="listitem"><div class="score-bar-label">${scoreChartText(row.model)}<small>${esc(row.harness)}</small></div><div class="score-bar-track${numeric?'':' is-missing'}"><i class="score-zero-line" style="left:${zero}%"></i>${numeric?`<span class="score-bar-mark${row.score===0?' is-zero':''}" style="left:${Math.min(zero,position)}%;width:${Math.abs(position-zero)}%"></span>${uncertainty}`:'<span class="score-null-label">未报告</span>'}</div><strong class="score-bar-value">${esc(hubScore(row))}${errorLabel}</strong></div>`;
+    return `<div class="score-bar-row" role="listitem"><div class="score-bar-label">${scoreChartText(row.model)}<small>${esc(hubHarnessLabel(row))}</small></div><div class="score-bar-track${numeric?'':' is-missing'}"><i class="score-zero-line" style="left:${zero}%"></i>${numeric?`<span class="score-bar-mark${row.score===0?' is-zero':''}" style="left:${Math.min(zero,position)}%;width:${Math.abs(position-zero)}%"></span>${uncertainty}`:'<span class="score-null-label">未报告</span>'}</div><strong class="score-bar-value">${esc(hubScore(row))}${errorLabel}</strong></div>`;
   }).join('');
   return `<figure class="score-figure"><figcaption><h3>${esc(board.name)} · 模型成绩</h3><p>${esc(board.metric)}${board.unit?' · '+esc(board.unit):' · 原生刻度'}。按当前筛选与排序显示模型和运行框架。</p></figcaption><div class="score-bar-axis"><div>${ticks}</div><span>${esc(board.unit||'原生分值')}</span></div><div class="score-bars" role="list" aria-label="当前评测的公开成绩条形图">${bars||'<p class="score-chart-empty">当前筛选没有配置。</p>'}</div>${rows.length>12?`<button class="score-chart-more" data-score-action="bars">${scoreVisualState.allBars?'收起为 12 个配置':'显示全部 '+rows.length+' 个配置'} ↕</button>`:''}<p class="score-chart-note">刻度从 ${esc(scoreChartTick(domain.min))} 到 ${esc(scoreChartTick(domain.max))}${board.unit==='%'?'%':''}；— 表示未报告，0 为真实成绩。${rows.some(row=>scoreChartUncertainty(row,board))?'误差线保留来源报告的 ±1 标准误，不是置信区间。':''}仅比较此表的版本和运行协议。${scoreChartSource(board)}</p></figure>`;
 }
@@ -306,7 +307,7 @@ function scoreVisualHeatmapMarkup(heatmap,state){
   const balanced=representatives.length>1;
   const visible=scoreVisualState.allHeatmap?configurations:(balanced?representatives:configurations).slice(0,8),lookup=new Map(heatmap.cells.map(cell=>[JSON.stringify([cell.configurationKey,cell.boardId]),cell]));
   const legend=heatmap.domain.ticks.map(value=>{const c=scoreChartColor(value,heatmap.domain);return `<span><i style="background:${c.background}"></i>${esc(scoreChartTick(value))}${heatmap.domain.unit==='%'?'%':''}</span>`}).join('');
-  const table=visible.length?`<div class="score-matrix-wrap" tabindex="0" role="region" aria-label="模型与评测基准的成绩热力图，可横向滚动"><table class="score-heatmap"><caption class="sr-only">同来源、版本、评估类型和指标的逐基准成绩</caption><thead><tr><th scope="col">模型 / 运行框架</th>${heatmap.boards.map(board=>`<th scope="col"><span>${esc(board.name)}</span></th>`).join('')}</tr></thead><tbody>${visible.map(config=>`<tr><th scope="row">${scoreChartText(config.model)}<small>${esc(config.harness)}</small></th>${heatmap.boards.map(board=>{
+  const table=visible.length?`<div class="score-matrix-wrap" tabindex="0" role="region" aria-label="模型与评测基准的成绩热力图，可横向滚动"><table class="score-heatmap"><caption class="sr-only">同来源、版本、评估类型和指标的逐基准成绩</caption><thead><tr><th scope="col">模型 / 运行框架</th>${heatmap.boards.map(board=>`<th scope="col"><span>${esc(board.name)}</span></th>`).join('')}</tr></thead><tbody>${visible.map(config=>`<tr><th scope="row">${scoreChartText(config.model)}<small>${esc(hubHarnessLabel(config))}</small></th>${heatmap.boards.map(board=>{
     const cell=lookup.get(JSON.stringify([config.key,board.id])),value=cell?.score??null,color=scoreChartColor(value,heatmap.domain);
     return `<td class="score-heat-cell${value===null?' is-missing':''}" style="${value===null?'':`background:${color.background};color:${color.color}`}" aria-label="${esc(config.model+' / '+config.harness+'，'+board.name+'，'+(value===null?'未报告':hubScore(cell.row)))}">${esc(value===null?'—':hubScore(cell.row,false))}</td>`;
   }).join('')}</tr>`).join('')}</tbody></table></div>`:'<p class="score-chart-empty">当前筛选没有可显示的模型配置。</p>';
@@ -316,7 +317,7 @@ function scoreVisualDifferenceMarkup(heatmap){
   const configs=heatmap.configurations;
   if(configs.length<2)return '<div class="score-chart-empty">当前筛选不足两个模型配置。调整模型关键词或运行框架后，选择 A 与 B 查看逐基准差值。</div>';
   const a=configs.find(config=>config.key===scoreVisualState.pairA),b=configs.find(config=>config.key===scoreVisualState.pairB);
-  const options=selected=>configs.map(config=>`<option value="${esc(config.key)}"${selected===config.key?' selected':''}>${esc(config.model+' / '+config.harness)}</option>`).join('');
+  const options=selected=>configs.map(config=>`<option value="${esc(config.key)}"${selected===config.key?' selected':''}>${esc(config.model+' / '+hubHarnessLabel(config))}</option>`).join('');
   const controls=`<div class="score-pair-controls"><label>配置 A<select data-score-pair="pairA" aria-label="差值图配置 A">${options(a?.key)}</select></label><span aria-hidden="true">−</span><label>配置 B<select data-score-pair="pairB" aria-label="差值图配置 B">${options(b?.key)}</select></label></div>`;
   if(!a||!b||a.key===b.key)return controls+'<p class="score-chart-empty">请选择两个不同配置。</p>';
   const differences=prepareScoreDifferences(heatmap,a.key,b.key),numbers=differences.filter(row=>row.value!==null),peak=Math.max(...numbers.map(row=>Math.abs(row.value)),0),max=heatmap.current.unit==='%'?Math.max(10,Math.ceil(peak/10)*10):Math.max(.1,Math.ceil(peak*10)/10);
@@ -326,24 +327,91 @@ function scoreVisualDifferenceMarkup(heatmap){
     const number=numeric?(row.value>0?'+':'')+row.value.toLocaleString('en-US',{maximumFractionDigits:unit==='百分点'?2:4}):'—';
     return `<div class="score-delta-row"><div class="score-delta-label">${esc(row.board.name)}</div><div class="score-delta-track${numeric?'':' is-missing'}"><i class="score-delta-zero"></i>${numeric?`<span class="score-delta-mark ${positive?'is-positive':'is-negative'}${row.value===0?' is-zero':''}" style="left:${positive?50:50-width}%;width:${width}%"></span>`:'<span class="score-null-label">缺少可比成绩</span>'}</div><strong class="score-delta-value">${esc(number)}</strong></div>`;
   }).join('');
-  return `<figure class="score-figure"><figcaption><h3>逐基准差值：A − B</h3><p>同来源、版本、基准、指标与单位逐项相减；差值不是统计显著性判断。</p></figcaption>${controls}<div class="score-pair-key"><span><i class="is-positive"></i>A：${scoreChartText(a.model)} <small>${esc(a.harness)}</small></span><span><i class="is-negative"></i>B：${scoreChartText(b.model)} <small>${esc(b.harness)}</small></span></div><div class="score-delta-axis"><div><span>−${esc(scoreChartTick(max))}</span><span>0</span><span>+${esc(scoreChartTick(max))}</span></div><span>${esc(unit)}</span></div><div class="score-deltas">${rows}</div><p class="score-chart-note">正值表示 A 的报告分数更高，负值表示 B 更高；缺少任一结果时不计算。${numbers.length} / ${differences.length} 项基准可比较，范围为 ±${esc(scoreChartTick(max))} ${esc(unit)}。${scoreChartSource(heatmap.current)}</p></figure>`;
+  return `<figure class="score-figure"><figcaption><h3>逐基准差值：A − B</h3><p>同来源、版本、基准、指标与单位逐项相减；差值不是统计显著性判断。</p></figcaption>${controls}<div class="score-pair-key"><span><i class="is-positive"></i>A：${scoreChartText(a.model)} <small>${esc(hubHarnessLabel(a))}</small></span><span><i class="is-negative"></i>B：${scoreChartText(b.model)} <small>${esc(hubHarnessLabel(b))}</small></span></div><div class="score-delta-axis"><div><span>−${esc(scoreChartTick(max))}</span><span>0</span><span>+${esc(scoreChartTick(max))}</span></div><span>${esc(unit)}</span></div><div class="score-deltas">${rows}</div><p class="score-chart-note">正值表示 A 的报告分数更高，负值表示 B 更高；缺少任一结果时不计算。${numbers.length} / ${differences.length} 项基准可比较，范围为 ±${esc(scoreChartTick(max))} ${esc(unit)}。${scoreChartSource(heatmap.current)}</p></figure>`;
 }
 function scoreChartScopeMarkup(board){
   const source=board.source||{},date=board.score_date,updated=board.data_updated_at||source.data_updated_at,checked=board.retrieved_at||source.retrieved_at;
-  return `<div class="score-evidence-meta">${scoreChartSource(board)}<span>${esc(board.version||'版本见来源')}</span><span>${date?'成绩日期 '+esc(date):'逐项成绩日期未披露'}</span>${updated?`<span>源更新 ${esc(updated)}</span>`:''}${checked?`<span>本站核对 ${esc(String(checked).slice(0,10))}</span>`:''}</div><details class="score-protocol"><summary>评测条件与可比范围</summary><p>${esc(board.protocol||source.protocol||'完整协议请核对原始来源。')}</p>${board.metric_note?`<p>${esc(board.metric_note)}</p>`:''}</details>`;
+  return `<div class="score-evidence-meta">${scoreChartSource(board)}<span>${esc(board.version||'版本见来源')}</span><span>${date?'成绩日期 '+esc(date):'逐项成绩日期未披露'}</span>${updated?`<span>源更新 ${esc(String(updated).slice(0,10))}</span>`:''}${checked?`<span>本站核对 ${esc(String(checked).slice(0,10))}</span>`:''}</div><details class="score-protocol"><summary>评测条件与可比范围</summary><p>${esc(board.protocol||source.protocol||'完整协议请核对原始来源。')}</p>${board.metric_note?`<p>${esc(board.metric_note)}</p>`:''}</details>`;
 }
+// Terminal-Bench-Science: source-reported subject and task results, kept in one protocol.
+const TBS_DOMAIN_LABELS={life:'生命科学',physical:'物理科学',earth:'地球科学',mathematical:'数学科学',engineering:'工程科学'};
+function isTbsOfficialBoard(board){return board?.id==='frontier::terminal-bench-science-official'&&Array.isArray(board.task_matrix?.tasks)&&board.task_matrix.tasks.length>0}
+function tbsConfigLabel(row){return row.configuration_label||[row.model,typeof hubHarnessLabel==='function'?hubHarnessLabel(row):row.harness].filter(Boolean).join(' / ')}
+function tbsHarnessLabel(row){return typeof hubHarnessLabel==='function'?hubHarnessLabel(row):[row.harness,row.effort].filter(Boolean).join(' · ')}
+function tbsVisibleConfigurations(rows,state){
+  const selected=rows.filter(row=>state.selected?.has(hubConfigurationKey(row))),configurations=selected.length?selected:rows;
+  return {configurations,visible:scoreVisualState.allHeatmap?configurations:configurations.slice(0,8),selected:!!selected.length};
+}
+function tbsDomainValue(row,domain){
+  const metric=row?.domain_metrics?.[domain],score=metric?.accuracy;
+  return typeof score==='number'&&Number.isFinite(score)?{score,passes:metric.passes,tasks:metric.tasks,sem:typeof metric.accuracy_stderr==='number'&&Number.isFinite(metric.accuracy_stderr)?metric.accuracy_stderr:null}:null;
+}
+function tbsTaskOutcome(board,row,task){
+  const result=board.task_matrix?.rows?.[row?.source_row_id||row?.configuration_id]?.[task.id];
+  if(!result||!Number.isInteger(result.solved)||!Number.isInteger(result.total)||result.total<=0||result.solved<0||result.solved>result.total)return null;
+  return {solved:result.solved,total:result.total,score:100*result.solved/result.total};
+}
+function tbsTasksForDomain(board,domain){return list(board.task_matrix?.tasks).filter(task=>!domain||task.domain===domain)}
+function tbsTaskComparison(board,a,b,domain=''){
+  const tasks=tbsTasksForDomain(board,domain).map(task=>{
+    const av=tbsTaskOutcome(board,a,task),bv=tbsTaskOutcome(board,b,task),comparable=!!av&&!!bv&&av.total===bv.total;
+    return {task,a:av,b:bv,delta:comparable?av.solved-bv.solved:null};
+  });
+  return {tasks,aMore:tasks.filter(task=>task.delta>0).length,bMore:tasks.filter(task=>task.delta<0).length,equal:tasks.filter(task=>task.delta===0).length,missing:tasks.filter(task=>task.delta===null).length};
+}
+function tbsDomainControls(board){
+  const domains=new Set(list(board.task_matrix?.tasks).map(task=>task.domain));
+  return `<label class="tbs-domain-filter">任务学科<select data-score-domain aria-label="Terminal-Bench-Science 任务学科"><option value="">全部 ${list(board.task_matrix?.tasks).length} 个任务</option>${Object.entries(TBS_DOMAIN_LABELS).filter(([id])=>domains.has(id)).map(([id,label])=>`<option value="${id}"${scoreVisualState.tbsDomain===id?' selected':''}>${label} · ${tbsTasksForDomain(board,id).length} 个任务</option>`).join('')}</select></label>`;
+}
+function tbsExpandConfigurations(visible){return visible.configurations.length>8?`<button class="score-chart-more" data-score-action="heatmap">${scoreVisualState.allHeatmap?'收起为 8 个配置':'显示全部 '+visible.configurations.length+' 个配置'} ↕</button>`:''}
+function tbsConfigurationHeader(row){return `${scoreChartText(row.model)}<small>${esc(tbsHarnessLabel(row))}</small>`}
+function scoreVisualTbsDomainsMarkup(board,rows,state){
+  const view=tbsVisibleConfigurations(rows,state),domains=Object.keys(TBS_DOMAIN_LABELS),domain={min:0,max:100};
+  const table=view.visible.length?`<div class="score-matrix-wrap" tabindex="0" role="region" aria-label="Terminal-Bench-Science 五学科热图，可横向滚动"><table class="score-heatmap tbs-domain-matrix"><caption class="sr-only">官方同批次模型配置在五个学科的成功率、成功次数和任务试次</caption><thead><tr><th scope="col">模型 / 运行框架</th>${domains.map(key=>`<th scope="col">${TBS_DOMAIN_LABELS[key]}<small>${tbsTasksForDomain(board,key).length} 个任务</small></th>`).join('')}</tr></thead><tbody>${view.visible.map(row=>`<tr><th scope="row">${tbsConfigurationHeader(row)}</th>${domains.map(key=>{
+    const value=tbsDomainValue(row,key),color=scoreChartColor(value?.score??null,domain),count=value&&Number.isInteger(value.passes)&&Number.isInteger(value.tasks)?`${value.passes} / ${value.tasks} 次`:'';
+    return `<td class="score-heat-cell${value?'':' is-missing'}"${value?` style="background:${color.background};color:${color.color}"`:''}><strong>${value?esc(value.score.toFixed(1))+'%':'—'}</strong>${count?`<small>${esc(count)}</small>`:''}${value?.sem!==null&&value?.sem!==undefined?`<small>±${esc(value.sem.toFixed(1))} SE</small>`:''}</td>`;
+  }).join('')}</tr>`).join('')}</tbody></table></div>`:'<p class="score-chart-empty">当前筛选没有模型配置。</p>';
+  return `<figure class="score-figure"><figcaption><h3>五个学科的模型表现。</h3><p>同一批次 Terminal-Bench-Science 0.1 官方结果；颜色为学科内成功率。${view.selected?'仅显示已勾选配置。':'按当前总成绩排序与筛选显示配置。'}每格同时保留成功次数 / 任务试次。</p></figcaption><div class="score-heat-legend">${[0,25,50,75,100].map(score=>`<span><i style="background:${scoreChartColor(score,domain).background}"></i>${score}%</span>`).join('')}<span><i class="is-missing"></i>未报告</span></div>${table}${tbsExpandConfigurations(view)}<p class="score-chart-note">每个任务重复 ${esc(board.trials_per_task)} 次；学科大小不同，分母为该学科的任务试次，五列不做等权平均。SE 为来源报告的标准误，单位为百分点，不是置信区间。显示 ${view.visible.length} / ${view.configurations.length} 个当前配置。${scoreChartSource(board)}</p></figure>`;
+}
+function scoreVisualTbsTasksMarkup(board,rows,state){
+  const view=tbsVisibleConfigurations(rows,state),tasks=tbsTasksForDomain(board,scoreVisualState.tbsDomain||''),domain={min:0,max:100},trialCount=board.trials_per_task;
+  const table=view.visible.length?`<div class="score-matrix-wrap tbs-task-wrap" tabindex="0" role="region" aria-label="Terminal-Bench-Science 逐任务热图，可横向滚动，聚焦格子查看完整任务信息"><table class="score-heatmap tbs-task-matrix" style="--tbs-task-columns:${tasks.length}"><caption class="sr-only">每格为该模型配置在该任务的成功次数 / 重复次数；零次成功与未报告分别显示</caption><thead><tr><th scope="col">模型 / 运行框架</th>${tasks.map(task=>`<th scope="col"><span class="tbs-task-name" tabindex="0">${esc(task.id)}<span class="tbs-cell-tooltip" role="tooltip">${esc(task.id)} · ${esc(TBS_DOMAIN_LABELS[task.domain]||task.domain)}</span></span></th>`).join('')}</tr></thead><tbody>${view.visible.map(row=>`<tr><th scope="row">${tbsConfigurationHeader(row)}</th>${tasks.map(task=>{
+    const value=tbsTaskOutcome(board,row,task),color=scoreChartColor(value?.score??null,domain),label=value?`${value.solved} / ${value.total} 次成功`:'未报告',description=`${tbsConfigLabel(row)}，${task.id}，${TBS_DOMAIN_LABELS[task.domain]||task.domain}，${label}`;
+    return `<td class="score-heat-cell tbs-task-cell${value?'':' is-missing'}" tabindex="0" aria-label="${esc(description)}"${value?` style="background:${color.background};color:${color.color}"`:''}><span aria-hidden="true">${value?`${value.solved}/${value.total}`:'—'}</span><span class="tbs-cell-tooltip" role="tooltip">${esc(task.id)}<br>${esc(TBS_DOMAIN_LABELS[task.domain]||task.domain)} · ${esc(label)}</span></td>`;
+  }).join('')}</tr>`).join('')}</tbody></table></div>`:'<p class="score-chart-empty">当前筛选没有模型配置。</p>';
+  return `<figure class="score-figure"><figcaption><h3>70 个任务，逐项比较。</h3><p>每列是一个真实科研任务；每格为成功次数 / 重复次数，不是通过任务总数。按当前配置筛选与总成绩排序。${view.selected?'已勾选配置优先显示。':''}</p></figcaption><div class="tbs-task-toolbar">${tbsDomainControls(board)}<div class="score-heat-legend">${Array.from({length:trialCount+1},(_,i)=>i).map(solved=>`<span><i style="background:${scoreChartColor(100*solved/trialCount,domain).background}"></i>${solved}/${trialCount}</span>`).join('')}<span><i class="is-missing"></i>未报告</span></div></div>${table}${tbsExpandConfigurations(view)}<p class="score-chart-note">显示 ${tasks.length} / ${list(board.task_matrix?.tasks).length} 个任务、${view.visible.length} / ${view.configurations.length} 个当前配置。0/3 是三次均未成功，— 是缺失；横向滚动可看全部任务，鼠标停留或键盘聚焦格子可查看完整任务名。逐题结果不能替代重复评测或统计显著性检验。${scoreChartSource(board)}</p></figure>`;
+}
+function scoreVisualTbsDifferenceMarkup(board,rows,state){
+  if(rows.length<2)return '<p class="score-chart-empty">当前筛选不足两个配置，请调整模型或运行框架筛选。</p>';
+  const a=rows.find(row=>hubConfigurationKey(row)===scoreVisualState.pairA),b=rows.find(row=>hubConfigurationKey(row)===scoreVisualState.pairB);
+  const options=selected=>rows.map(row=>`<option value="${esc(hubConfigurationKey(row))}"${hubConfigurationKey(row)===selected?' selected':''}>${esc(tbsConfigLabel(row))}</option>`).join('');
+  const controls=`<div class="score-pair-controls"><label>配置 A<select data-score-pair="pairA" aria-label="差值图配置 A">${options(a&&hubConfigurationKey(a))}</select></label><span aria-hidden="true">−</span><label>配置 B<select data-score-pair="pairB" aria-label="差值图配置 B">${options(b&&hubConfigurationKey(b))}</select></label></div>`;
+  if(!a||!b||hubConfigurationKey(a)===hubConfigurationKey(b))return controls+'<p class="score-chart-empty">请选择两个不同配置。</p>';
+  const overall=typeof a.score==='number'&&typeof b.score==='number'&&Number.isFinite(a.score)&&Number.isFinite(b.score)?a.score-b.score:null;
+  const differences=[{name:'全部 70 个任务',value:overall},...Object.entries(TBS_DOMAIN_LABELS).map(([key,name])=>{const av=tbsDomainValue(a,key),bv=tbsDomainValue(b,key);return {name,value:av&&bv?av.score-bv.score:null}})];
+  const max=Math.max(10,Math.ceil(Math.max(...differences.filter(row=>row.value!==null).map(row=>Math.abs(row.value)),0)/10)*10);
+  const deltaRows=differences.map(row=>{const value=row.value===null?null:Math.abs(row.value)<1e-10?0:row.value,width=value===null?0:50*Math.abs(value)/max;return `<div class="score-delta-row"><div class="score-delta-label">${esc(row.name)}</div><div class="score-delta-track${value===null?' is-missing':''}"><i class="score-delta-zero"></i>${value===null?'<span class="score-null-label">缺少可比成绩</span>':`<span class="score-delta-mark ${value>=0?'is-positive':'is-negative'}${value===0?' is-zero':''}" style="left:${value>=0?50:50-width}%;width:${width}%"></span>`}</div><strong class="score-delta-value">${value===null?'—':esc((value>0?'+':'')+value.toFixed(2))}</strong></div>`}).join('');
+  const comparison=tbsTaskComparison(board,a,b,scoreVisualState.tbsDomain||'');
+  const summary=`<div class="tbs-task-summary" aria-label="逐任务成功次数比较"><div><strong>${comparison.aMore}</strong><span>A 成功次数更多</span></div><div><strong>${comparison.equal}</strong><span>成功次数相同</span></div><div><strong>${comparison.bMore}</strong><span>B 成功次数更多</span></div><div><strong>${comparison.missing}</strong><span>缺少可比结果</span></div></div>`;
+  const taskTable=`<details class="tbs-task-detail"><summary>查看 ${comparison.tasks.length} 个任务的 A / B 次数与差值</summary><div class="score-matrix-wrap" tabindex="0" role="region" aria-label="两配置逐任务成功次数表，可横向滚动"><table class="tbs-pair-table"><thead><tr><th scope="col">科研任务</th><th scope="col">学科</th><th scope="col">A 成功 / 重复</th><th scope="col">B 成功 / 重复</th><th scope="col">A − B 成功次数</th></tr></thead><tbody>${comparison.tasks.map(row=>`<tr><th scope="row">${esc(row.task.id)}</th><td>${esc(TBS_DOMAIN_LABELS[row.task.domain]||row.task.domain)}</td><td>${row.a?row.a.solved+' / '+row.a.total:'—'}</td><td>${row.b?row.b.solved+' / '+row.b.total:'—'}</td><td class="${row.delta>0?'tbs-positive':row.delta<0?'tbs-negative':''}">${row.delta===null?'—':(row.delta>0?'+':'')+row.delta}</td></tr>`).join('')}</tbody></table></div></details>`;
+  return `<figure class="score-figure"><figcaption><h3>两种配置，差在哪些科研任务？</h3><p>先比较总成功率与五学科成功率，再逐任务比较成功次数。来源、版本和协议一致；A − B 的差值不表示统计显著性。</p></figcaption>${controls}<div class="score-pair-key"><span><i class="is-positive"></i>A：${scoreChartText(a.model)} <small>${esc(tbsHarnessLabel(a))}</small></span><span><i class="is-negative"></i>B：${scoreChartText(b.model)} <small>${esc(tbsHarnessLabel(b))}</small></span></div><div class="score-delta-axis"><div><span>−${max}</span><span>0</span><span>+${max}</span></div><span>百分点</span></div><div class="score-deltas">${deltaRows}</div><div class="tbs-pair-task-heading"><h4>逐任务成功次数</h4>${tbsDomainControls(board)}</div>${summary}${taskTable}<p class="score-chart-note">学科图以各自任务试次为分母。逐题仅在重复次数相同时比较成功次数；“相同”包含两者均为 0 次。任务汇总可按学科筛选，上方总分与五学科差值始终显示完整范围。${scoreChartSource(board)}</p></figure>`;
+}
+
 function renderScoreVisuals(){
   const root=document.querySelector('#score-visuals-app');
   if(!root)return;
   if(!hubModel?.boards?.length){root.innerHTML='';return}
   const heatmap=prepareHeatmap(hubModel,hubState),board=heatmap.current;
   if(!board){root.innerHTML='';return}
-  if(scoreVisualState.scope!==heatmap.scope){scoreVisualState.scope=heatmap.scope;scoreVisualState.pairA='';scoreVisualState.pairB='';scoreVisualState.allBars=false;scoreVisualState.allHeatmap=false}
+  if(scoreVisualState.scope!==heatmap.scope){scoreVisualState.scope=heatmap.scope;scoreVisualState.pairA='';scoreVisualState.pairB='';scoreVisualState.allBars=false;scoreVisualState.allHeatmap=false;scoreVisualState.tbsDomain=''}
   const configs=heatmap.configurations;
   if(!configs.some(config=>config.key===scoreVisualState.pairA))scoreVisualState.pairA=configs[0]?.key||'';
   if(!configs.some(config=>config.key===scoreVisualState.pairB))scoreVisualState.pairB=configs.find(config=>config.key!==scoreVisualState.pairA)?.key||'';
-  const tabs=[['bars','成绩排行'],['heatmap','跨基准热力'],['difference','两模型差值']];
-  root.innerHTML=`<div class="score-visual-heading"><div><p class="eyebrow">MODEL SCORES / COMPARE THE EVIDENCE</p><h2>用图表，读懂分数与差异。</h2></div><a href="#hub-raw-results">查看精确成绩表 ↓</a></div>${scoreChartScopeMarkup(board)}<div class="score-chart-tabs" role="group" aria-label="成绩图表类型">${tabs.map(([id,name])=>`<button data-score-tab="${id}" aria-pressed="${id===scoreVisualState.tab}">${name}</button>`).join('')}</div><div class="score-chart-panel">${scoreVisualState.tab==='heatmap'?scoreVisualHeatmapMarkup(heatmap,hubState):scoreVisualState.tab==='difference'?scoreVisualDifferenceMarkup(heatmap):scoreVisualBarMarkup(board,hubFilteredRows())}</div>`;
+  const tbs=isTbsOfficialBoard(board);
+  if(!tbs&&scoreVisualState.tab==='tasks')scoreVisualState.tab='heatmap';
+  const tabs=tbs?[['bars','成绩排行'],['heatmap','5 学科热图'],['tasks','70 任务热图'],['difference','两配置差值']]:[['bars','成绩排行'],['heatmap','跨基准热力'],['difference','两模型差值']];
+  const panel=tbs&&scoreVisualState.tab==='heatmap'?scoreVisualTbsDomainsMarkup(board,hubFilteredRows(),hubState):tbs&&scoreVisualState.tab==='tasks'?scoreVisualTbsTasksMarkup(board,hubFilteredRows(),hubState):tbs&&scoreVisualState.tab==='difference'?scoreVisualTbsDifferenceMarkup(board,hubFilteredRows(),hubState):scoreVisualState.tab==='heatmap'?scoreVisualHeatmapMarkup(heatmap,hubState):scoreVisualState.tab==='difference'?scoreVisualDifferenceMarkup(heatmap):scoreVisualBarMarkup(board,hubFilteredRows());
+  root.innerHTML=`<div class="score-visual-heading"><div><p class="eyebrow">MODEL SCORES / COMPARE THE EVIDENCE</p><h2>用图表，读懂分数与差异。</h2></div><a href="#hub-raw-results">查看精确成绩表 ↓</a></div>${scoreChartScopeMarkup(board)}<div class="score-chart-tabs" role="group" aria-label="成绩图表类型">${tabs.map(([id,name])=>`<button data-score-tab="${id}" aria-pressed="${id===scoreVisualState.tab}">${name}</button>`).join('')}</div><div class="score-chart-panel">${panel}</div>`;
   if(root.dataset?.scoreVisualBound||typeof root.addEventListener!=='function')return;
   if(root.dataset)root.dataset.scoreVisualBound='true';
   root.addEventListener('click',event=>{
@@ -352,6 +420,7 @@ function renderScoreVisuals(){
     if(action){const field=action.dataset.scoreAction==='bars'?'allBars':'allHeatmap';scoreVisualState[field]=!scoreVisualState[field];renderScoreVisuals();root.querySelector?.(`[data-score-action="${action.dataset.scoreAction}"]`)?.focus()}
   });
   root.addEventListener('change',event=>{
+    if(event.target.hasAttribute('data-score-domain')){scoreVisualState.tbsDomain=event.target.value;renderScoreVisuals();root.querySelector?.('[data-score-domain]')?.focus();return}
     const field=event.target.dataset?.scorePair;
     if(!['pairA','pairB'].includes(field))return;
     scoreVisualState[field]=event.target.value;renderScoreVisuals();root.querySelector?.(`[data-score-pair="${field}"]`)?.focus();
@@ -362,6 +431,10 @@ function initializeScoreVisuals(){renderScoreVisuals()}
 // Source-backed result explorer. Each board retains its own metric and protocol.
 const hubState = {board:'', assessment:'capabilities', query:'', harness:'', sort:'score-desc', selected:new Set(), notice:''};
 let hubModel = {boards:[], rows:[]};
+function hubPreferredBoardId(model,catalog) {
+  const configured=catalog?.frontier?.featured?.scoreboard_id;
+  return model.boards.find(board=>configured&&board.id==='frontier::'+configured)?.id||model.boards.find(board=>board.id==='frontier::terminal-bench-science-official')?.id||model.boards[0]?.id||'';
+}
 function hubConfigurationKey(row) {
   return `${row.source_id||row.board_id}::${row.configuration_id||row.id}`;
 }
@@ -383,17 +456,25 @@ function buildEvaluationHub(catalog) {
     const primary=list(board.columns)[0];
     if(!primary)continue;
     const id='frontier::'+board.id;
-    boards.push({id,name:board.name,benchmark_id:board.benchmark_id,version:board.name,assessment:'capabilities',metric:primary.label,unit:primary.unit,direction:'higher',
+    boards.push({id,name:board.name,benchmark_id:board.benchmark_id,version:board.version||board.name,assessment:'capabilities',metric:primary.label,unit:primary.unit,direction:'higher',
       source_id:'frontier::'+board.id,source_url:board.source?.url,source:{name:board.source?.label||'公开报告',url:board.source?.url},score_date:board.score_date,
-      retrieved_at:catalog.frontier.reviewed_at,protocol:board.protocol,metric_note:board.metric_note,legacy:true});
-    list(board.rows).forEach((row,index)=>rows.push({id:id+'::'+index,board_id:id,benchmark_id:board.benchmark_id,benchmark_name:board.name,configuration_id:row.system,
-      model:row.system,provider:'原报告未单列',harness:'见系统配置',score:typeof row.values?.[primary.key]==='number'?row.values[primary.key]:null,
-      metric:primary.label,unit:primary.unit,decimals:primary.decimals,version:board.name,assessment:'capabilities',source_id:'frontier::'+board.id,
-      source_url:board.source?.url,score_date:board.score_date,retrieved_at:catalog.frontier.reviewed_at,protocol:board.protocol,
+      retrieved_at:board.retrieved_at||catalog.frontier.reviewed_at,data_updated_at:board.source_updated_at,protocol:board.protocol,metric_note:board.metric_note,
+      task_count:board.task_count,trials_per_task:board.trials_per_task,task_matrix:board.task_matrix,api_source:board.api_source,
+      legacy:!list(board.rows).some(row=>row.model&&row.agent)});
+    list(board.rows).forEach((row,index)=>rows.push({id:id+'::'+(row.id||index),source_row_id:row.id,board_id:id,benchmark_id:board.benchmark_id,benchmark_name:board.name,configuration_id:row.id||row.system,configuration_label:row.system,
+      model:row.model||row.system,provider:row.provider||'原报告未单列',harness:row.agent||'见系统配置',harness_provider:row.agent_provider,effort:row.reasoning_effort,
+      domain_metrics:row.domain_metrics,trial_count:row.trial_count,passes:row.values?.passes,task_count:board.task_count,trials_per_task:board.trials_per_task,
+      score:typeof row.values?.[primary.key]==='number'&&Number.isFinite(row.values[primary.key])?row.values[primary.key]:null,
+      metric:primary.label,unit:primary.unit,decimals:primary.decimals,version:board.version||board.name,assessment:'capabilities',source_id:'frontier::'+board.id,
+      source_url:board.source?.url,score_date:board.score_date,retrieved_at:board.retrieved_at||catalog.frontier.reviewed_at,protocol:board.protocol,
       secondary:list(board.columns).slice(1).map(column=>({label:column.label,value:row.values?.[column.key]??null,unit:column.unit,decimals:column.decimals}))}));
   }
+  const preferred=hubPreferredBoardId({boards},catalog);
+  boards.sort((a,b)=>Number(b.id===preferred)-Number(a.id===preferred));
   return {boards,rows};
 }
+function hubHarnessLabel(row){return [row.harness,row.effort].filter(Boolean).join(' · ')}
+function hubSearchText(row){return [row.model,row.provider,row.harness,row.effort,row.configuration_label].filter(Boolean).join(' ').toLowerCase()}
 function hubScore(row,withUnit=true) {
   if(!row||typeof row.score!=='number'||!Number.isFinite(row.score))return '—';
   const decimals=Number.isInteger(row.decimals)?Math.max(0,Math.min(4,row.decimals)):2;
@@ -401,7 +482,7 @@ function hubScore(row,withUnit=true) {
 }
 function hubFilteredRows() {
   const query=hubState.query.trim().toLowerCase();
-  const rows=hubModel.rows.filter(row=>row.board_id===hubState.board&&(!hubState.harness||row.harness===hubState.harness)&&(!query||[row.model,row.provider,row.harness].join(' ').toLowerCase().includes(query)));
+  const rows=hubModel.rows.filter(row=>row.board_id===hubState.board&&(!hubState.harness||row.harness===hubState.harness)&&(!query||hubSearchText(row).includes(query)));
   return rows.sort((a,b)=>{
     if(hubState.sort==='model')return a.model.localeCompare(b.model)||a.harness.localeCompare(b.harness);
     if(a.score===null)return b.score===null?a.model.localeCompare(b.model):1;
@@ -417,6 +498,7 @@ function hubSourceLink(url,text='原始来源') {
   return safe?`<a href="${esc(safe)}" target="_blank" rel="noreferrer">${esc(text)} ↗</a>`:'<span>来源待补</span>';
 }
 function hubCoverage(row) {
+  if(Number.isInteger(row.task_count)&&Number.isInteger(row.trials_per_task)&&row.task_count*row.trials_per_task===row.trial_count)return `${row.task_count} 任务 × ${row.trials_per_task} 次试验`;
   const c=row.coverage;
   return c&&Number.isFinite(c.observed)&&Number.isFinite(c.total)?`${c.observed}/${c.total} 项套件覆盖`:'仅此公开报告';
 }
@@ -433,14 +515,14 @@ function syncHubControls(root) {
 function hubComparisonMarkup() {
   const selected=[...hubState.selected].map(key=>hubModel.rows.find(row=>hubConfigurationKey(row)===key)).filter(Boolean);
   if(!selected.length)return '<p class="hub-compare-hint">勾选成绩行中的「对比」，横向查看最多 4 个模型与框架配置。</p>';
-  const chips=selected.map(row=>`<button class="hub-selection" data-hub-remove="${esc(hubConfigurationKey(row))}" aria-label="${esc('移除 '+row.model+' / '+row.harness)}">${esc(row.model)} <span>${esc(row.harness)} ×</span></button>`).join('');
+  const chips=selected.map(row=>`<button class="hub-selection" data-hub-remove="${esc(hubConfigurationKey(row))}" aria-label="${esc('移除 '+row.model+' / '+hubHarnessLabel(row))}">${esc(row.model)} <span>${esc(hubHarnessLabel(row))} ×</span></button>`).join('');
   const head=`<div class="hub-compare-heading"><div><p class="eyebrow">CONFIGURATION COMPARISON / ${selected.length} OF 4</p><h3>在每个评测里，分别比较。</h3></div><button class="hub-text-button" data-hub-clear>清空选择 ↺</button></div><div class="hub-selections">${chips}</div>`;
   if(selected.length===1)return head+'<p class="hub-compare-hint">再选一个配置开始比较。不同基准分别展示，不计算跨基准总分。</p>';
   const matrixBoards=hubModel.boards.filter(board=>hubModel.rows.some(row=>row.board_id===board.id&&hubState.selected.has(hubConfigurationKey(row))));
   const table=assessment=>{
     const boards=matrixBoards.filter(board=>board.assessment===assessment);
     if(!boards.length)return '';
-    return `<h4 class="hub-matrix-title">${assessment==='safeguards'?'安全与拒答 / SAFEGUARDS':'科学能力 / CAPABILITIES'}</h4><div class="hub-table-wrap" tabindex="0" role="region" aria-label="${assessment==='safeguards'?'安全':'能力'}逐基准配置对比，可横向滚动"><table class="hub-matrix"><caption class="sr-only">逐基准配置对比；空白项表示没有报告</caption><thead><tr><th scope="col">评测 · 指标</th>${selected.map(row=>`<th scope="col">${esc(row.model)}<small>${esc(row.harness)}</small></th>`).join('')}</tr></thead><tbody>${boards.map(board=>`<tr><th scope="row">${hubSourceLink(board.source_url,board.name)}<small>${esc(board.metric)}${board.unit?' · '+esc(board.unit):''}</small></th>${selected.map(config=>{
+    return `<h4 class="hub-matrix-title">${assessment==='safeguards'?'安全与拒答 / SAFEGUARDS':'科学能力 / CAPABILITIES'}</h4><div class="hub-table-wrap" tabindex="0" role="region" aria-label="${assessment==='safeguards'?'安全':'能力'}逐基准配置对比，可横向滚动"><table class="hub-matrix"><caption class="sr-only">逐基准配置对比；空白项表示没有报告</caption><thead><tr><th scope="col">评测 · 指标</th>${selected.map(row=>`<th scope="col">${esc(row.model)}<small>${esc(hubHarnessLabel(row))}</small></th>`).join('')}</tr></thead><tbody>${boards.map(board=>`<tr><th scope="row">${hubSourceLink(board.source_url,board.name)}<small>${esc(board.metric)}${board.unit?' · '+esc(board.unit):''}</small></th>${selected.map(config=>{
       const row=hubModel.rows.find(row=>row.board_id===board.id&&hubConfigurationKey(row)===hubConfigurationKey(config));
       return `<td>${esc(hubScore(row))}</td>`;
     }).join('')}</tr>`).join('')}</tbody></table></div>`;
@@ -470,9 +552,9 @@ function paintHubResults(root) {
   const metric=board.metric||'原报告指标';
   const numeric=rows.filter(row=>row.score!==null);
   const max=Math.max(...numeric.map(row=>Math.abs(row.score)),1);
-  output.innerHTML=`<div class="hub-board-heading"><div><p class="eyebrow">${esc(board.assessment==='safeguards'?'SAFEGUARDS':'CAPABILITIES')} / ${esc(board.version||'版本见来源')}</p><h3>${esc(board.name)}</h3><p>${esc(metric)}${unit?' · '+esc(unit):''}${board.evaluation_count!=null?' · '+esc(board.evaluation_count)+' 项评估':''}</p></div><div class="hub-source-meta">${hubSourceLink(board.source_url||source.url,source.name||'查看原始成绩')}<span>${board.score_date?'成绩日期 '+esc(board.score_date):'成绩日期未披露'}</span>${board.data_updated_at||source.data_updated_at?`<span>源更新 ${esc(board.data_updated_at||source.data_updated_at)}</span>`:''}<span>本站核对 ${esc(String(board.retrieved_at||source.retrieved_at||data?.evaluation_hub?.updated_at||'未披露').slice(0,10))}</span></div></div><details class="hub-protocol"><summary>查看评分口径、运行协议与覆盖范围 <span aria-hidden="true">＋</span></summary><p>${esc(board.metric_note||'按来源报告的单项指标展示；模型与运行框架共同构成一个配置。')}</p><p>${esc(protocol)}</p>${source.notes?.length?`<ul>${source.notes.map(note=>`<li>${esc(note)}</li>`).join('')}</ul>`:''}<p>表中的套件覆盖是该配置在来源整套评测中的报告范围，不是当前基准的成功次数。缺失成绩不按 0 计分。</p></details>${rows.length?`<div class="hub-table-wrap" tabindex="0" role="region" aria-label="${esc(board.name)} 成绩表，可横向滚动"><table class="hub-score-table"><caption class="sr-only">${esc(board.name)} · 相同来源、版本与协议下的公开成绩</caption><thead><tr><th scope="col">对比</th><th scope="col">序</th><th scope="col">模型 / 提供商</th><th scope="col">运行框架</th><th scope="col" class="hub-score-cell">${esc(metric)}${unit?' ('+esc(unit)+')':''}</th><th scope="col">证据与覆盖</th></tr></thead><tbody>${rows.map((row,index)=>{
+  output.innerHTML=`<div class="hub-board-heading"><div><p class="eyebrow">${esc(board.assessment==='safeguards'?'SAFEGUARDS':'CAPABILITIES')} / ${esc(board.version||'版本见来源')}</p><h3>${esc(board.name)}</h3><p>${esc(metric)}${unit?' · '+esc(unit):''}${board.evaluation_count!=null?' · '+esc(board.evaluation_count)+' 项评估':''}</p></div><div class="hub-source-meta">${hubSourceLink(board.source_url||source.url,source.name||'查看原始成绩')}<span>${board.score_date?'成绩日期 '+esc(board.score_date):'成绩日期未披露'}</span>${board.data_updated_at||source.data_updated_at?`<span>源更新 ${esc(String(board.data_updated_at||source.data_updated_at).slice(0,10))}</span>`:''}<span>本站核对 ${esc(String(board.retrieved_at||source.retrieved_at||data?.evaluation_hub?.updated_at||'未披露').slice(0,10))}</span></div></div><details class="hub-protocol"><summary>查看评分口径、运行协议与覆盖范围 <span aria-hidden="true">＋</span></summary><p>${esc(board.metric_note||'按来源报告的单项指标展示；模型与运行框架共同构成一个配置。')}</p><p>${esc(protocol)}</p>${source.notes?.length?`<ul>${source.notes.map(note=>`<li>${esc(note)}</li>`).join('')}</ul>`:''}<p>表中的套件覆盖是该配置在来源整套评测中的报告范围，不是当前基准的成功次数。缺失成绩不按 0 计分。</p></details>${rows.length?`<div class="hub-table-wrap" tabindex="0" role="region" aria-label="${esc(board.name)} 成绩表，可横向滚动"><table class="hub-score-table"><caption class="sr-only">${esc(board.name)} · 相同来源、版本与协议下的公开成绩</caption><thead><tr><th scope="col">对比</th><th scope="col">序</th><th scope="col">模型 / 提供商</th><th scope="col">运行框架</th><th scope="col" class="hub-score-cell">${esc(metric)}${unit?' ('+esc(unit)+')':''}</th><th scope="col">证据与覆盖</th></tr></thead><tbody>${rows.map((row,index)=>{
     const key=hubConfigurationKey(row), selected=hubState.selected.has(key), score=hubScore(row,false), width=row.score===null?0:Math.max(0,Math.min(100,100*Math.abs(row.score)/max));
-    return `<tr${selected?' class="hub-selected-row"':''}><td><button class="hub-compare-toggle" data-hub-compare="${esc(key)}" aria-pressed="${selected}" aria-label="${esc((selected?'取消对比 ':'对比 ')+row.model+' / '+row.harness)}">${selected?'✓':'＋'}</button></td><td class="hub-rank">${row.score===null?'—':index+1}</td><th scope="row"><span class="hub-model-name">${brandBadge(row.model)}</span><small>${esc(row.provider)}</small><small class="hub-mobile-meta">${esc(row.harness)} · ${esc(hubCoverage(row))}</small></th><td><span class="hub-harness">${esc(row.harness)}</span></td><td class="hub-score-cell"><strong>${esc(score)}</strong>${row.score===null?'<small>未报告</small>':`<span class="hub-score-bar" aria-hidden="true"><i style="width:${width}%"></i></span>`}</td><td class="hub-evidence"><span>${esc(hubCoverage(row))}</span>${hubSourceLink(row.source_url)}${row.secondary?.length?`<small>${row.secondary.map(item=>`${esc(item.label)} ${esc(hubScore({score:item.value,unit:item.unit,decimals:item.decimals}))}`).join(' · ')}</small>`:''}</td></tr>`;
+    return `<tr${selected?' class="hub-selected-row"':''}><td><button class="hub-compare-toggle" data-hub-compare="${esc(key)}" aria-pressed="${selected}" aria-label="${esc((selected?'取消对比 ':'对比 ')+row.model+' / '+hubHarnessLabel(row))}">${selected?'✓':'＋'}</button></td><td class="hub-rank">${row.score===null?'—':index+1}</td><th scope="row"><span class="hub-model-name">${brandBadge(row.model)}</span><small>${esc(row.provider)}</small><small class="hub-mobile-meta">${esc(hubHarnessLabel(row))} · ${esc(hubCoverage(row))}</small></th><td><span class="hub-harness">${esc(hubHarnessLabel(row))}</span></td><td class="hub-score-cell"><strong>${esc(score)}</strong>${row.score===null?'<small>未报告</small>':`<span class="hub-score-bar" aria-hidden="true"><i style="width:${width}%"></i></span>`}</td><td class="hub-evidence"><span>${esc(hubCoverage(row))}</span>${hubSourceLink(row.source_url)}${row.secondary?.length?`<small>${row.secondary.map(item=>`${esc(item.label)} ${esc(hubScore({score:item.value,unit:item.unit,decimals:item.decimals}))}`).join(' · ')}</small>`:''}</td></tr>`;
   }).join('')}</tbody></table></div>`:'<div class="hub-empty"><strong>没有匹配的配置</strong><p>调整模型关键词或运行框架，或重置筛选查看本评测的全部成绩。</p><button class="hub-text-button" data-hub-reset>重置筛选 ↺</button></div>'}<p class="hub-footnote">序号表示当前筛选与排序中的位置。仅在本表协议内比较；这里汇集公开报告，本站未复测这些模型。${board.legacy?'原报告未把模型与框架拆为独立字段，系统配置按原文保留。':''}</p>`;
   if(comparison)comparison.innerHTML=hubComparisonMarkup();
   const notice=root.querySelector('[data-hub-notice]');
@@ -480,17 +562,21 @@ function paintHubResults(root) {
   renderScoreVisuals();
 }
 function hubCsv(rows) {
-  const headers=['benchmark','model','provider','harness','score','metric','unit','version','assessment','score_date','retrieved_at','source_url','protocol','suite_coverage','status'];
+  const headers=['benchmark','model','provider','harness','score','metric','unit','version','assessment','score_date','retrieved_at','source_url','protocol','suite_coverage','status','configuration','reasoning_effort','trial_count','standard_error','standard_error_unit','passes'];
   const escape=value=>{
     let text=String(value??'');
     if(typeof value!=='number'&&/^[=+@\-\t\r]/.test(text))text="'"+text;
     return '"'+text.replaceAll('"','""')+'"';
   };
-  return [headers,...rows.map(row=>[row.benchmark_name,row.model,row.provider,row.harness,row.score,row.metric,row.unit,row.version,row.assessment,row.score_date,row.retrieved_at,row.source_url,row.protocol,hubCoverage(row),row.score===null?'not_reported':'reported'])].map(row=>row.map(escape).join(',')).join('\r\n');
+  return [headers,...rows.map(row=>{const error=scoreChartUncertainty(row,hubModel.boards.find(board=>board.id===row.board_id));return [row.benchmark_name,row.model,row.provider,row.harness,row.score,row.metric,row.unit,row.version,row.assessment,row.score_date,row.retrieved_at,row.source_url,row.protocol,hubCoverage(row),row.score===null?'not_reported':'reported',row.configuration_label,row.effort,row.trial_count,error?.value,error?.unit,row.passes]})].map(row=>row.map(escape).join(',')).join('\r\n');
+}
+function hubExportDocument(rows,board){
+  const exportedBoard=board?.task_matrix?{...board,task_matrix:{tasks:board.task_matrix.tasks,rows:Object.fromEntries(rows.flatMap(row=>{const id=row.source_row_id;return id&&board.task_matrix.rows[id]?[[id,board.task_matrix.rows[id]]]:[]}))}}:board;
+  return {exported_at:new Date().toISOString(),scope:'single-benchmark-source-protocol',board:exportedBoard,results:rows};
 }
 function downloadHub(format) {
   const rows=hubFilteredRows(), board=hubCurrentBoard();
-  const payload=format==='csv'?'\uFEFF'+hubCsv(rows):JSON.stringify({exported_at:new Date().toISOString(),scope:'single-benchmark-source-protocol',board,results:rows},null,2);
+  const payload=format==='csv'?'\uFEFF'+hubCsv(rows):JSON.stringify(hubExportDocument(rows,board),null,2);
   const objectUrl=URL.createObjectURL(new Blob([payload],{type:format==='csv'?'text/csv;charset=utf-8':'application/json'}));
   const anchor=document.createElement('a');
   anchor.href=objectUrl;anchor.download=`ai4s-results-${String(board?.id||'selection').replace(/[^a-zA-Z0-9_-]/g,'-')}.${format}`;anchor.click();URL.revokeObjectURL(objectUrl);
@@ -500,10 +586,10 @@ function renderEvaluationHub() {
   if(!root)return;
   hubModel=buildEvaluationHub(data);
   const reported=hubModel.rows.filter(row=>row.score!==null), configurations=new Set(hubModel.rows.map(hubConfigurationKey));
-  if(!hubState.board)hubState.board=hubModel.boards.find(board=>board.id==='bio-v1-spatialbench')?.id||hubModel.boards[0]?.id||'';
+  if(!hubModel.boards.some(board=>board.id===hubState.board))hubState.board=hubPreferredBoardId(hubModel,data);
   const current=hubCurrentBoard();if(current)hubState.assessment=current.assessment;
-  const featured=hubModel.boards.find(board=>board.id==='frontier::terminal-bench-science-official'), biology=hubModel.boards.find(board=>board.id==='bio-v1-spatialbench');
-  root.innerHTML=`<div class="hub-stats"><div><strong>${fmt(reported.length)}</strong><span>已报告单项成绩</span></div><div><strong>${fmt(configurations.size)}</strong><span>来源内模型 × 框架配置</span></div><div><strong>${fmt(hubModel.boards.length)}</strong><span>独立成绩表</span></div><p>真实来源，逐项阅读。<br>选择评测，再看模型表现。</p></div><div class="hub-toolbar"><div class="hub-assessment" role="group" aria-label="选择评测类别"><button data-hub-assessment="capabilities" aria-pressed="${hubState.assessment==='capabilities'}">科学能力</button><button data-hub-assessment="safeguards" aria-pressed="${hubState.assessment==='safeguards'}">安全与拒答</button></div><div class="hub-quick">快速查看 ${featured?`<button data-hub-board="${esc(featured.id)}">TB-Science ↗</button>`:''}${biology?`<button data-hub-board="${esc(biology.id)}">生物 Agent ↗</button>`:''}</div></div><div class="provider-rail" data-provider-strip aria-label="按模型公司浏览"></div><div class="hub-filters"><label class="hub-benchmark-filter">评测与协议<select data-hub-field="board" aria-label="选择成绩基准"></select></label><label>模型 / 公司<input data-hub-field="query" type="search" placeholder="例如 OpenAI、Claude、DeepSeek" value="${esc(hubState.query)}" autocomplete="off" /></label><label>运行框架<select data-hub-field="harness" aria-label="筛选运行框架"></select></label><label>排序<select data-hub-field="sort" aria-label="成绩排序">${hubOptions([['score-desc','成绩从高到低'],['score-asc','成绩从低到高'],['model','模型名称']],hubState.sort)}</select></label></div><div class="hub-result-line"><p data-hub-count role="status"></p><div aria-label="当前基准成绩表导出"><span class="hub-export-scope">当前基准导出</span><button data-hub-export="csv">CSV ↓</button><button data-hub-export="json">JSON ↓</button><button data-hub-reset>重置 ↺</button></div></div><section id="score-visuals-app" aria-label="模型成绩图表"></section><div id="hub-raw-results" data-hub-output></div><p class="hub-notice" data-hub-notice role="status" aria-live="polite"></p><section class="hub-comparison" data-hub-comparison aria-label="模型配置对比"></section>`;
+  const featured=hubModel.boards.find(board=>board.id==='frontier::terminal-bench-science-official'), independent=hubModel.boards.find(board=>board.id==='frontier::terminal-bench-science-aa'), biology=hubModel.boards.find(board=>board.id==='bio-v1-spatialbench');
+  root.innerHTML=`<div class="hub-stats"><div><strong>${fmt(reported.length)}</strong><span>已报告单项成绩</span></div><div><strong>${fmt(configurations.size)}</strong><span>来源内模型 × 框架配置</span></div><div><strong>${fmt(hubModel.boards.length)}</strong><span>独立成绩表</span></div><p>真实来源，逐项阅读。<br>选择评测，再看模型表现。</p></div><div class="hub-toolbar"><div class="hub-assessment" role="group" aria-label="选择评测类别"><button data-hub-assessment="capabilities" aria-pressed="${hubState.assessment==='capabilities'}">科学能力</button><button data-hub-assessment="safeguards" aria-pressed="${hubState.assessment==='safeguards'}">安全与拒答</button></div><div class="hub-quick">快速查看 ${featured?`<button data-hub-board="${esc(featured.id)}">TB-Science 官方 ↗</button>`:''}${independent?`<button data-hub-board="${esc(independent.id)}">AA 独立复测 ↗</button>`:''}${biology?`<button data-hub-board="${esc(biology.id)}">生物 Agent ↗</button>`:''}</div></div><div class="provider-rail" data-provider-strip aria-label="按模型公司浏览"></div><div class="hub-filters"><label class="hub-benchmark-filter">评测与协议<select data-hub-field="board" aria-label="选择成绩基准"></select></label><label>模型 / 公司<input data-hub-field="query" type="search" placeholder="例如 OpenAI、Claude、DeepSeek" value="${esc(hubState.query)}" autocomplete="off" /></label><label>运行框架<select data-hub-field="harness" aria-label="筛选运行框架"></select></label><label>排序<select data-hub-field="sort" aria-label="成绩排序">${hubOptions([['score-desc','成绩从高到低'],['score-asc','成绩从低到高'],['model','模型名称']],hubState.sort)}</select></label></div><div class="hub-result-line"><p data-hub-count role="status"></p><div aria-label="当前基准成绩表导出"><span class="hub-export-scope">当前基准导出</span><button data-hub-export="csv">CSV ↓</button><button data-hub-export="json">JSON ↓</button><button data-hub-reset>重置 ↺</button></div></div><section id="score-visuals-app" aria-label="模型成绩图表"></section><div id="hub-raw-results" data-hub-output></div><p class="hub-notice" data-hub-notice role="status" aria-live="polite"></p><section class="hub-comparison" data-hub-comparison aria-label="模型配置对比"></section>`;
   // The deployment contract's lightweight DOM checks only read the initial markup.
   if(typeof root.querySelector!=='function')return;
   syncHubControls(root);paintHubResults(root);
@@ -531,7 +617,7 @@ function renderEvaluationHub() {
     };
     if(target.dataset.hubProvider){const provider=target.dataset.hubProvider;hubState.query=hubState.query.toLowerCase()===provider.toLowerCase()?'':provider;root.querySelector('[data-hub-field="query"]').value=hubState.query;paintHubResults(root);for(const button of root.querySelectorAll('[data-hub-provider]'))if(button.dataset.hubProvider===provider)button.focus()}
     if(target.dataset.hubAssessment){updateAssessment(target.dataset.hubAssessment);paintHubResults(root)}
-    if(target.dataset.hubBoard){hubState.board=target.dataset.hubBoard;updateAssessment(hubCurrentBoard()?.assessment||'capabilities');paintHubResults(root)}
+    if(target.dataset.hubBoard){hubState.board=target.dataset.hubBoard;hubState.query='';hubState.harness='';root.querySelector('[data-hub-field="query"]').value='';updateAssessment(hubCurrentBoard()?.assessment||'capabilities');paintHubResults(root)}
     if(target.hasAttribute('data-hub-reset')){
       hubState.query='';hubState.harness='';hubState.sort='score-desc';
       root.querySelector('[data-hub-field="query"]').value='';root.querySelector('[data-hub-field="sort"]').value=hubState.sort;
@@ -557,6 +643,15 @@ function openResultsForBenchmark(benchmarkId) {
   hubState.board=board.id;hubState.assessment=board.assessment;hubState.query='';hubState.harness='';
   renderEvaluationHub();
   document.querySelector('#results')?.scrollIntoView({behavior:'smooth',block:'start'});
+  return true;
+}
+function openTbsView(tab='bars') {
+  const board=hubModel.boards.find(board=>board.id==='frontier::terminal-bench-science-official');
+  if(!board)return false;
+  hubState.board=board.id;hubState.assessment=board.assessment;hubState.query='';hubState.harness='';hubState.sort='score-desc';
+  scoreVisualState.tab=tab==='tasks'?'tasks':'bars';
+  renderEvaluationHub();
+  document.querySelector(tab==='tasks'?'#score-visuals-app':'#results')?.scrollIntoView({behavior:'smooth',block:'start'});
   return true;
 }
 function evaluationResultCount(benchmarkId) {
@@ -770,6 +865,8 @@ $('filter-toggle').addEventListener('click',()=>{
 $('prev-page').addEventListener('click',()=>{if(page<=1)return;page--;renderResults();scrollToResults()});
 $('next-page').addEventListener('click',()=>{if(page>=Math.ceil(filtered.length/pageSize))return;page++;renderResults();scrollToResults()});
 document.addEventListener('click',e=>{
+  const tbsTarget=e.target.closest('[data-tbs-view]');
+  if(tbsTarget&&openTbsView(tbsTarget.dataset.tbsView))e.preventDefault?.();
   const evaluateTarget=e.target.closest('[data-eval-start]'),resultsTarget=e.target.closest('[data-results-benchmark]');
   if(evaluateTarget||resultsTarget){if($('detail-drawer').classList.contains('open'))closeDetail();if(evaluateTarget)openEvaluationBenchmark(evaluateTarget.dataset.evalStart);if(resultsTarget)openResultsForBenchmark(resultsTarget.dataset.resultsBenchmark)}
   const visualJump=e.target.closest('[data-score-jump]');
