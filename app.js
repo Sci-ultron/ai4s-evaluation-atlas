@@ -519,5 +519,44 @@ $('download-catalog').addEventListener('click',()=>{const a=document.createEleme
 document.querySelector('.drawer-panel').setAttribute('role','dialog');
 document.querySelector('.drawer-panel').setAttribute('aria-modal','true');
 document.querySelector('.drawer-panel').setAttribute('aria-labelledby','detail-title');
+// Decorative motion never changes scientific values or controls data availability.
+function initializeAtlasMotion() {
+  const root=typeof document!=='undefined'?document.documentElement:null;
+  if(!root?.setAttribute)return;
+  const button=document.getElementById('motion-toggle');
+  if(!button||button.dataset?.motionBound)return;
+  if(button.dataset)button.dataset.motionBound='true';
+  const text=document.getElementById('motion-toggle-label');
+  const icon=document.getElementById('motion-toggle-icon');
+  let paused=false;
+  const preference=typeof window!=='undefined'&&typeof window.matchMedia==='function'?window.matchMedia('(prefers-reduced-motion: reduce)'):null;
+  const apply=()=>{
+    const reduced=Boolean(preference?.matches);
+    const state=reduced?'reduced':paused?'paused':'running';
+    root.setAttribute('data-atlas-motion',state);
+    button.disabled=reduced;
+    button.setAttribute('aria-pressed',String(state==='running'));
+    button.setAttribute('aria-label',reduced?'系统已减少动画，当前显示静态图示':paused?'播放装饰动画':'暂停装饰动画');
+    if(text)text.textContent=reduced?'系统已减少动画':paused?'播放动画':'暂停动画';
+    if(icon)icon.textContent=reduced?'—':paused?'▷':'Ⅱ';
+  };
+  button.addEventListener('click',()=>{if(preference?.matches)return;paused=!paused;apply()});
+  if(typeof preference?.addEventListener==='function')preference.addEventListener('change',apply);
+  else if(typeof preference?.addListener==='function')preference.addListener(apply);
+  apply();
+  // Visibility pauses the decorative loop without changing the visitor's choice.
+  const visibility=()=>root.setAttribute('data-atlas-visible',document.hidden?'hidden':'visible');
+  if(typeof document.addEventListener==='function')document.addEventListener('visibilitychange',visibility);
+  visibility();
+  // Only explicitly marked illustrations receive an entry animation; content is always visible.
+  if(typeof IntersectionObserver==='function'&&typeof document.querySelectorAll==='function'){
+    const observer=new IntersectionObserver(entries=>{
+      for(const entry of entries){if(!entry.isIntersecting)continue;entry.target.classList?.add('atlas-motion-seen');observer.unobserve(entry.target)}
+    },{threshold:.2});
+    for(const illustration of document.querySelectorAll('[data-motion-reveal]'))observer.observe(illustration);
+  }
+}
+
+initializeAtlasMotion();
 setView('grid');
 init();

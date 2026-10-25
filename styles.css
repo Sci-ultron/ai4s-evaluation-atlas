@@ -759,3 +759,69 @@ kbd { display: grid; place-items: center; width: 22px; height: 23px; border: 1px
   .hub-score-table thead .hub-score-cell { font-size: 8px; }
   .hub-score-table .hub-score-bar { width: 66px; }
 }
+
+/* Atlas identity: editorial science typography and a restrained instrument palette. */
+:root { --ink: #202823; --muted: #697069; --quiet: #7e857c; --line: #dde2d9; --canvas: #fbfbf8; --soft: #f1f3ed; --atlas-sage: #4d705e; --atlas-clay: #b88368; --editorial: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, "Songti SC", "STSong", serif; }
+.brand > span { font-family: var(--editorial); font-size: 25px; letter-spacing: -.9px; font-weight: 500; }
+.brand strong { font-weight: 500; }
+.brand small { font-family: var(--mono); font-size: 8px; letter-spacing: 1.25px; }
+.hero-copy h1 { font-family: var(--editorial); font-size: clamp(44px, 5.1vw, 68px); font-weight: 600; letter-spacing: -.055em; }
+h2 { font-family: var(--editorial); font-weight: 600; letter-spacing: -.02em; }
+.hero-frontier h2 { font-family: var(--mono); font-weight: 550; letter-spacing: -.7px; }
+.frontier-badge, .hub-harness { border-color: #dce3d8; }
+::selection { background: #dce7d9; color: var(--ink); }
+@media (max-width:580px) { .brand > span { font-size: 23px; } .brand small { font-size: 7px; letter-spacing: .8px; } .hero-copy h1 { font-size: clamp(43px,11vw,58px); } }
+
+/* A quiet scientific instrument: a diagram, not a live experiment status. */
+:root { --signal-terra:#b87359; --signal-sage:#52715f; }
+.hero-signal { margin-top:30px; max-width:540px; padding-top:19px; border-top:1px solid var(--line); }
+.hero-signal-heading { display:flex; justify-content:space-between; align-items:center; gap:16px; }
+.signal-overline { display:block; font:8px/1.5 var(--mono); letter-spacing:1.4px; color:var(--muted); }
+.hero-signal-heading h2 { margin-top:5px; font:16px/1.5 var(--sans); font-weight:500; letter-spacing:-.02em; }
+.motion-toggle { flex-shrink:0; display:inline-flex; align-items:center; justify-content:center; gap:7px; min-height:32px; padding:5px 9px; border:1px solid var(--line); font:9px/1.5 var(--mono); color:var(--muted); background:transparent; }
+.motion-toggle:hover:not(:disabled) { border-color:var(--ink); color:var(--ink); background:var(--paper); }
+.motion-toggle:disabled { opacity:1; cursor:default; font-size:8px; }
+#motion-toggle-icon { font-size:11px; width:10px; text-align:center; }
+.hero-signal-map { width:100%; height:auto; max-height:116px; margin-top:12px; color:var(--ink); overflow:visible; }
+.signal-guide { opacity:.2; }.signal-routes { opacity:.34; }.signal-points { opacity:.42; }.signal-axis { opacity:.35; }
+.signal-route { stroke-dasharray:8 92; stroke-dashoffset:108; animation:atlas-route-flow 5.6s linear infinite; }
+.signal-route-b { animation-delay:.7s; }.signal-route-c { animation-delay:1.4s; }.signal-route-output { animation-delay:2.3s; }
+.signal-core { transform-box:fill-box; transform-origin:center; animation:atlas-coordinate-pulse 5.6s ease-in-out infinite; }
+.hero-signal-caption { display:flex; justify-content:space-between; gap:10px; color:var(--muted); font:8px/1.7 var(--mono); letter-spacing:.35px; }
+.hero-signal-caption span:nth-child(2) { text-align:center; }.hero-signal-caption span:last-child { text-align:right; }
+.signal-note { margin-top:9px; color:var(--quiet); font:8px/1.7 var(--sans); }
+@keyframes atlas-route-flow { 0% { stroke-dashoffset:108; opacity:0; } 8% { opacity:1; } 68%,100% { stroke-dashoffset:-8; opacity:0; } }
+@keyframes atlas-coordinate-pulse { 0%,26%,65%,100% { transform:scale(1); opacity:.8; } 43% { transform:scale(1.24); opacity:.24; } }
+@keyframes atlas-reveal { from { opacity:.35; transform:translateY(7px); } to { opacity:1; transform:none; } }
+@keyframes atlas-score-enter { from { transform:scaleX(.03); } to { transform:scaleX(1); } }
+[data-atlas-motion="running"] .atlas-motion-seen { animation:atlas-reveal .7s cubic-bezier(.2,.7,.2,1) both; }
+[data-atlas-motion="running"] .hub-score-bar i { transform-origin:left; animation:atlas-score-enter .65s cubic-bezier(.2,.7,.2,1) both; }
+.benchmark-card,.frontier-card,.suite-card { transition:transform .2s ease, border-color .2s ease, background-color .2s ease; }
+@media (hover:hover) and (pointer:fine) { [data-atlas-motion="running"] .benchmark-card:hover,[data-atlas-motion="running"] .frontier-card:hover,[data-atlas-motion="running"] .suite-card:hover { transform:translateY(-2px); } }
+[data-atlas-motion="paused"] .signal-route,[data-atlas-motion="paused"] .signal-core,[data-atlas-visible="hidden"] .signal-route,[data-atlas-visible="hidden"] .signal-core { animation-play-state:paused; }
+[data-atlas-motion="reduced"] .signal-route,[data-atlas-motion="reduced"] .signal-core { animation:none; }
+[data-atlas-motion="reduced"] .signal-route { stroke-dasharray:none; opacity:.45; }
+@media (max-width:580px) { .hero-signal { margin-top:23px; padding-top:16px; } .hero-signal-heading { align-items:flex-start; gap:10px; } .hero-signal-heading h2 { font-size:14px; }.signal-overline { font-size:7px; }.motion-toggle { margin-top:1px; font-size:8px; padding-inline:7px; }.hero-signal-map { margin-top:9px; }.hero-signal-caption { font-size:7px; }.signal-note { margin-top:7px; font-size:7px; } }
+@media (prefers-reduced-motion:reduce) { html { scroll-behavior:auto; }.hero-signal *, .brand-mark *, .hub-score-bar i, .atlas-motion-seen { animation:none!important; transition:none!important; }.signal-route { stroke-dasharray:none; opacity:.45; }.benchmark-card,.frontier-card,.suite-card,.button { transition:none; transform:none!important; } }
+
+/* The coordinate mark resolves once, then rests beside the editorial wordmark. */
+.brand strong { font-style: italic; }
+.atlas-coordinate-mark { flex: 0 0 auto; }
+[data-atlas-motion="running"] .brand-mark .mark-frame path { stroke-dasharray: 32; animation: atlas-mark-stroke 1.2s cubic-bezier(.2,.7,.2,1) both; }
+[data-atlas-motion="running"] .brand-mark .mark-frame path.mark-frame-ne { animation-delay: .1s; }
+[data-atlas-motion="running"] .brand-mark .mark-frame path.mark-frame-se { animation-delay: .2s; }
+[data-atlas-motion="running"] .brand-mark .mark-frame path.mark-frame-sw { animation-delay: .3s; }
+[data-atlas-motion="running"] .brand-mark .mark-core { animation: atlas-mark-resolve .85s ease-out both; }
+@keyframes atlas-mark-stroke { from { stroke-dashoffset: 32; } to { stroke-dashoffset: 0; } }
+@keyframes atlas-mark-resolve { from { opacity: .35; } to { opacity: 1; } }
+[data-atlas-visible="hidden"] .brand-mark * { animation-play-state: paused; }
+.footer-signature { display: inline-flex; align-items: center; gap: 12px; }
+.footer-signature .brand-mark { width: 35px; height: 35px; }
+.footer-signature strong { font-family: var(--editorial); font-size: 25px; font-weight: 500; letter-spacing: -.8px; }
+.footer-signature em { font-weight: 500; }
+@media (max-width:580px) { .brand-mark { width: 34px; height: 34px; } .hero-signal-heading h2 { font-family: var(--sans); } }
+
+/* No-script and failed-script pages remain still and fully readable. */
+html:not([data-atlas-motion]) .signal-route, html:not([data-atlas-motion]) .signal-core { animation: none; }
+html:not([data-atlas-motion]) .signal-route { stroke-dasharray: none; opacity: .45; }
+html:not([data-atlas-motion]) .motion-toggle { display: none; }

@@ -6,15 +6,15 @@
     <meta name="theme-color" content="#fafaf8" />
     <meta name="description" content="面向大模型与 AI4S 团队的科学评测工作台：查公开成绩、比较模型与运行框架、选择评测并整理结果。" />
     <title>AI4S Atlas · 科学 AI 评测与成绩中心</title>
-    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
-    <link rel="stylesheet" href="styles.css?v=9c69e472cf61" />
+    <link rel="icon" type="image/svg+xml" href="favicon.svg?v=d7034d7647aa" />
+    <link rel="stylesheet" href="styles.css?v=734e3d5e1bc2" />
   </head>
   <body>
     <a class="skip-link" href="#catalog">跳至评测目录</a>
     <header class="site-header">
       <div class="topbar shell">
         <a class="brand" href="#top" aria-label="AI4S Atlas 首页">
-          <svg class="brand-mark" viewBox="0 0 36 36" fill="none" aria-hidden="true"><path d="m18 3 15 15-15 15L3 18Z" stroke="currentColor" stroke-width="1.5"/><path d="M18 10v16M10 18h16" stroke="currentColor" stroke-width="1.5"/><path d="M15 15h6v6h-6z" fill="currentColor"/></svg>
+          <svg class="brand-mark atlas-coordinate-mark" viewBox="0 0 64 64" fill="none" aria-hidden="true"><g class="mark-frame" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="square" stroke-linejoin="miter"><path class="mark-frame-nw" d="M8 22V8h14"/><path class="mark-frame-ne" d="M42 8h14v14"/><path class="mark-frame-se" d="M56 42v14H42"/><path class="mark-frame-sw" d="M22 56H8V42"/></g><path class="mark-core" fill="currentColor" fill-rule="evenodd" d="M19 44 29.3 19h5.4L45 44h-7.2l-2-5.6h-7.6L26.2 44H19Zm11.4-11.8h3.2L32 27.4l-1.6 4.8Z"/><rect class="mark-accent" x="52.5" y="4.5" width="7" height="7" fill="#61766a"/></svg>
           <span>AI4S <strong>Atlas</strong><small>Scientific AI Benchmarks</small></span>
         </a>
         <nav class="main-nav" aria-label="主导航">
@@ -39,6 +39,45 @@
             <button class="button button-ghost catalog-download" id="download-catalog">下载目录 <span aria-hidden="true">↓</span></button>
           </div>
           <div class="hero-topics" aria-label="快速入口"><a href="#catalog">科学基准目录 ↗</a><a href="#suites">按目标选套件 ↗</a><a href="#evidence">覆盖与来源 ↗</a></div>
+          <div class="hero-signal" aria-labelledby="hero-signal-title">
+  <div class="hero-signal-heading">
+    <div><span class="signal-overline">THE SCIENTIFIC LOOP</span><h2 id="hero-signal-title">从任务，到可复核的证据。</h2></div>
+    <button id="motion-toggle" class="motion-toggle" type="button" aria-pressed="true" aria-label="暂停装饰动画"><span id="motion-toggle-icon" aria-hidden="true">Ⅱ</span><span id="motion-toggle-label">暂停动画</span></button>
+  </div>
+  <svg class="hero-signal-map" viewBox="0 0 480 112" fill="none" aria-hidden="true" focusable="false" data-motion-reveal>
+    <g class="signal-guide" stroke="currentColor" stroke-width=".6">
+      <path d="M8 56h464M240 10v90"/><path d="M194 12h92v88h-92z" stroke-dasharray="2 5"/>
+      <path d="M208 24h64v64h-64z"/><path d="M224 24v64M240 24v64M256 24v64M208 40h64M208 56h64M208 72h64"/>
+      <path d="M8 16v8m-4-4h8M472 88v8m-4-4h8"/>
+    </g>
+    <g class="signal-routes" stroke="currentColor" stroke-width="1.1">
+      <path d="M32 26h86l38 30h52"/><path d="M32 56h176"/><path d="M32 86h86l38-30h52"/>
+      <path d="M272 56h176"/>
+    </g>
+    <g class="signal-inputs" fill="var(--canvas,#fafaf8)" stroke="currentColor" stroke-width="1.2">
+      <path d="M25 19h14v14H25z"/><circle cx="32" cy="56" r="7"/><path d="m32 77 9 9-9 9-9-9z"/>
+    </g>
+    <g class="signal-flow" stroke="var(--signal-terra,#b87359)" stroke-width="1.7" stroke-linecap="round">
+      <path class="signal-route signal-route-a" pathLength="100" d="M40 26h78l38 30h52"/>
+      <path class="signal-route signal-route-b" pathLength="100" d="M40 56h168"/>
+      <path class="signal-route signal-route-c" pathLength="100" d="M42 86h76l38-30h52"/>
+    </g>
+    <g class="signal-coordinate" stroke="var(--signal-sage,#52715f)" stroke-width="1.6">
+      <path d="M208 35V24h11m42 0h11v11m0 42v11h-11m-42 0h-11V77"/>
+      <path d="M232 56h16m-8-8v16"/>
+      <circle class="signal-core" cx="240" cy="56" r="12"/>
+    </g>
+    <path class="signal-route signal-route-output" pathLength="100" d="M272 56h168" stroke="var(--signal-sage,#52715f)" stroke-width="1.8" stroke-linecap="round"/>
+    <g class="signal-output" stroke="currentColor" stroke-width="1.2" fill="var(--canvas,#fafaf8)">
+      <rect x="440" y="44" width="24" height="24" rx="2"/>
+      <path d="m446 56 4 4 8-8" stroke="var(--signal-sage,#52715f)" stroke-width="1.8"/>
+    </g>
+    <g class="signal-points" fill="currentColor"><circle cx="118" cy="26" r="1.6"/><circle cx="118" cy="86" r="1.6"/><circle cx="350" cy="56" r="1.6"/></g>
+    <g class="signal-axis" stroke="currentColor" stroke-width=".7"><path d="M78 102h27m6 0h10m6 0h4M349 14h27m6 0h10m6 0h4"/></g>
+  </svg>
+  <div class="hero-signal-caption"><span>01 / 任务</span><span>02 / 测量协议</span><span>03 / 公开证据</span></div>
+  <p class="signal-note" id="motion-status">流程示意 · 非实时评测</p>
+</div>
         </div>
         <aside id="hero-frontier" class="hero-frontier" aria-label="科研前沿焦点"><p class="eyebrow">RESEARCH TRAJECTORIES</p><p>正在读取前沿研究数据…</p></aside>
       </section>
@@ -174,8 +213,8 @@
       </section>
     </main>
 
-    <footer class="footer shell"><div class="footer-brand"><strong>AI4S Atlas</strong><p>Measure what matters.<br />Understand what comes next.</p></div><div class="footer-meta"><span id="footer-meta">科学 AI 评测与公开成绩 · 官方证据优先</span><a href="https://github.com/Sci-ultron/ai4s-evaluation-atlas" target="_blank" rel="noreferrer">维护与贡献 ↗</a><a href="#top">回到顶部 ↑</a></div><p class="footer-fineprint">成绩与目录均保留来源和版本；缺失信息明确标注。评测在参与者自己的环境执行，公开提交经审核后收录。目录分类为规则派生。</p></footer>
+    <footer class="footer shell"><div class="footer-brand"><a class="footer-signature" href="#top" aria-label="AI4S Atlas 首页"><svg class="brand-mark atlas-coordinate-mark" viewBox="0 0 64 64" fill="none" aria-hidden="true"><g class="mark-frame" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="square" stroke-linejoin="miter"><path class="mark-frame-nw" d="M8 22V8h14"/><path class="mark-frame-ne" d="M42 8h14v14"/><path class="mark-frame-se" d="M56 42v14H42"/><path class="mark-frame-sw" d="M22 56H8V42"/></g><path class="mark-core" fill="currentColor" fill-rule="evenodd" d="M19 44 29.3 19h5.4L45 44h-7.2l-2-5.6h-7.6L26.2 44H19Zm11.4-11.8h3.2L32 27.4l-1.6 4.8Z"/><rect class="mark-accent" x="52.5" y="4.5" width="7" height="7" fill="#61766a"/></svg><strong>AI4S <em>Atlas</em></strong></a><p>Measure what matters.<br />Understand what comes next.</p></div><div class="footer-meta"><span id="footer-meta">科学 AI 评测与公开成绩 · 官方证据优先</span><a href="https://github.com/Sci-ultron/ai4s-evaluation-atlas" target="_blank" rel="noreferrer">维护与贡献 ↗</a><a href="#top">回到顶部 ↑</a></div><p class="footer-fineprint">成绩与目录均保留来源和版本；缺失信息明确标注。评测在参与者自己的环境执行，公开提交经审核后收录。目录分类为规则派生。</p></footer>
     <div id="detail-drawer" class="drawer" aria-hidden="true"><div class="drawer-backdrop" data-close-drawer></div><aside class="drawer-panel"><div class="drawer-topline"><span>AI4S / BENCHMARK NOTES</span><button class="drawer-close" data-close-drawer aria-label="关闭详情">关闭 <span aria-hidden="true">×</span></button></div><div id="drawer-content"></div></aside></div>
-    <script src="app.js?v=6a04c87d03f0" defer></script>
+    <script src="app.js?v=8feaaf8081a9" defer></script>
   </body>
 </html>
