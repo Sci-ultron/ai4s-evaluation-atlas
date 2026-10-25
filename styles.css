@@ -906,3 +906,6 @@ html:not([data-atlas-motion]) .motion-toggle { display: none; }
 .score-protocol { margin:0 0 22px; font:10px/1.9 var(--sans); color:var(--muted); }
 .score-protocol summary { cursor:pointer; font-family:var(--mono); }
 .score-protocol p { margin-top:10px; max-width:960px; }
+
+.hub-export-scope { color:var(--muted); font-size:9px; }
+@media(max-width:580px){ .hub-result-line { flex-wrap:wrap; } }
