@@ -4,10 +4,10 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#fafaf8" />
-    <meta name="description" content="AI4S Evaluation Atlas：探索科学模型与科研 Agent 的评测基准，按学科、能力与机构证据找到下一项实验。" />
-    <title>AI4S Atlas · 科学智能，逐一验证</title>
+    <meta name="description" content="面向大模型与 AI4S 团队的科学评测工作台：查公开成绩、比较模型与运行框架、选择评测并整理结果。" />
+    <title>AI4S Atlas · 科学 AI 评测与成绩中心</title>
     <link rel="icon" type="image/svg+xml" href="favicon.svg" />
-    <link rel="stylesheet" href="styles.css?v=709416d1b7a3" />
+    <link rel="stylesheet" href="styles.css?v=9c69e472cf61" />
   </head>
   <body>
     <a class="skip-link" href="#catalog">跳至评测目录</a>
@@ -15,13 +15,13 @@
       <div class="topbar shell">
         <a class="brand" href="#top" aria-label="AI4S Atlas 首页">
           <svg class="brand-mark" viewBox="0 0 36 36" fill="none" aria-hidden="true"><path d="m18 3 15 15-15 15L3 18Z" stroke="currentColor" stroke-width="1.5"/><path d="M18 10v16M10 18h16" stroke="currentColor" stroke-width="1.5"/><path d="M15 15h6v6h-6z" fill="currentColor"/></svg>
-          <span>AI4S <strong>Atlas</strong><small>Evaluation Index</small></span>
+          <span>AI4S <strong>Atlas</strong><small>Scientific AI Benchmarks</small></span>
         </a>
         <nav class="main-nav" aria-label="主导航">
+          <a class="nav-primary" href="#results">成绩中心</a>
+          <a href="#catalog">选择评测</a>
+          <a href="#evaluate">开始评测</a>
           <a class="nav-frontier" href="#frontier">科研前沿</a>
-          <a class="nav-primary" href="#catalog">评测目录</a>
-          <a href="#evidence">覆盖与证据</a>
-          <a href="#suites">评测套件</a>
         </nav>
         <a class="header-github" href="https://github.com/Sci-ultron/ai4s-evaluation-atlas" target="_blank" rel="noreferrer">GitHub <span aria-hidden="true">↗</span></a>
       </div>
@@ -30,14 +30,15 @@
     <main id="top" class="shell">
       <section class="hero" aria-labelledby="hero-title">
         <div class="hero-copy">
-          <p class="eyebrow"><span class="status-dot"></span> AN OPEN INDEX FOR SCIENTIFIC AI</p>
-          <h1 id="hero-title">科学智能，<br />逐一<span class="hero-word">验证<span class="pixel-period" aria-hidden="true"></span></span></h1>
-          <p class="lede">从科学问答到长程科研 Agent。<br class="mobile-break" />从 Terminal-Bench-Science 出发，<br class="desktop-break" />读懂科研轨迹、真实工作流与模型表现。</p>
+          <p class="eyebrow"><span class="status-dot"></span> THE WORKSPACE FOR SCIENTIFIC AI EVALUATION</p>
+          <h1 id="hero-title">科学 AI，<br />一起<span class="hero-word">验证<span class="pixel-period" aria-hidden="true"></span></span></h1>
+          <p class="lede">面向大模型公司、AI4S 团队与研究者。<br />查公开成绩，选择科学任务，<br class="desktop-break" />按官方协议评测，让结果可以追溯、比较与复核。</p>
           <div class="hero-actions">
-            <a class="button button-primary" href="#frontier">探索科研前沿 <span aria-hidden="true">↗</span></a>
-            <button class="button button-ghost" id="download-catalog">下载目录 <span aria-hidden="true">↓</span></button>
+            <a class="button button-primary" href="#results">查看模型成绩 <span aria-hidden="true">↗</span></a>
+            <a class="button button-ghost" href="#evaluate">开始一次评测 <span aria-hidden="true">→</span></a>
+            <button class="button button-ghost catalog-download" id="download-catalog">下载目录 <span aria-hidden="true">↓</span></button>
           </div>
-          <div class="hero-topics" aria-label="前沿专题入口"><a href="#frontier-data">轨迹数据 ↗</a><a href="#frontier-evaluations">长程评测 ↗</a><a href="#frontier-performance">模型表现 ↗</a></div>
+          <div class="hero-topics" aria-label="快速入口"><a href="#catalog">科学基准目录 ↗</a><a href="#suites">按目标选套件 ↗</a><a href="#evidence">覆盖与来源 ↗</a></div>
         </div>
         <aside id="hero-frontier" class="hero-frontier" aria-label="科研前沿焦点"><p class="eyebrow">RESEARCH TRAJECTORIES</p><p>正在读取前沿研究数据…</p></aside>
       </section>
@@ -49,30 +50,18 @@
         <div class="signal-cell"><span id="hero-orgs">—</span><small>关联机构 <span>ORGANIZATIONS</span></small></div>
       </section>
 
-      <section id="frontier" class="frontier-section" aria-labelledby="frontier-title">
+      <section id="results" class="platform-section results-section" aria-labelledby="results-title">
         <div class="section-heading">
-          <div><p class="eyebrow"><span class="status-dot"></span> IN FOCUS / LONG-HORIZON SCIENCE</p><h2 id="frontier-title">从研究过程，到真实表现。</h2></div>
-          <div class="frontier-review"><span class="frontier-badge">编辑精选 · 非热度排名</span><span id="frontier-reviewed">正在核对来源…</span></div>
+          <div><p class="eyebrow">01 / PUBLIC EVALUATION RESULTS</p><h2 id="results-title">成绩，连同条件一起看。</h2></div>
+          <p class="section-note">同一模型，在不同运行框架下分别记录。<br />选定评测后比较，每一个分数都有出处。</p>
         </div>
-        <nav class="frontier-jump" aria-label="科研前沿导航"><a href="#frontier-data"><span class="frontier-jump-title">01 / 科研轨迹数据 <b>↘</b></span><strong id="frontier-data-signal">—</strong><small>类本期精选过程数据</small></a><a href="#frontier-evaluations"><span class="frontier-jump-title">02 / 长程研究评测 <b>↘</b></span><strong id="frontier-benchmark-signal">—</strong><small id="frontier-benchmark-signal-label">任务规模以来源为准</small></a><a href="#frontier-performance"><span class="frontier-jump-title">03 / 模型与系统表现 <b>↘</b></span><strong id="frontier-score-signal">—</strong><small id="frontier-score-signal-label">公开报告成绩</small></a></nav>
-        <div id="frontier-data" class="frontier-block" aria-labelledby="frontier-data-title">
-          <div class="frontier-block-heading"><div><p class="eyebrow">PROCESS IS THE DATA</p><h3 id="frontier-data-title">不只看答案，也看研究如何发生。</h3></div><p>人类决策、合成构思与检索轨迹，<br />分别看待，保留原始口径。</p></div>
-          <div id="frontier-resources" class="frontier-resource-grid"></div>
-        </div>
-        <div id="frontier-evaluations" class="frontier-block" aria-labelledby="frontier-evaluations-title">
-          <div class="frontier-block-heading"><div><p class="eyebrow">TEST THE WHOLE RESEARCH LOOP</p><h3 id="frontier-evaluations-title">真正长程，测的是完整闭环。</h3></div><button class="frontier-catalog-link" data-frontier-catalog>查看总目录中的相关评测 ↗</button></div>
-          <div id="frontier-benchmarks" class="frontier-benchmark-grid"></div>
-        </div>
-        <div id="frontier-performance" class="frontier-block" aria-labelledby="frontier-performance-title">
-          <div class="frontier-block-heading"><div><p class="eyebrow">REPORTED RESULTS / SOURCE BY SOURCE</p><h3 id="frontier-performance-title">模型表现，要连同条件一起看。</h3></div><p>原作者公开报告 · 本站未复测<br />不同评测之间不合并排名。</p></div>
-          <div id="scoreboard-controls" class="scoreboard-controls" role="group" aria-label="选择成绩评测"></div>
-          <div class="scoreboard-layout"><div id="frontier-score-context" class="scoreboard-context"></div><div id="frontier-scores" class="scoreboard-results" aria-live="polite"></div></div>
-        </div>
+        <div id="results-app"><p class="loading-state">正在整理公开评测成绩…</p></div>
+        <details class="platform-methodology"><summary>这些成绩如何组织？</summary><p>我们参考 <a href="https://benchmarks.bio/" target="_blank" rel="noreferrer">benchmarks.bio ↗</a>，将模型与运行框架作为独立配置，逐项展示基准成绩，分开呈现能力与安全评估。缺失结果保留为空，不与 0 分混淆。不同版本、协议和指标的成绩分别查看；成绩中心不计算跨基准综合分。</p><p>已收录成绩来自原作者或独立评测机构的公开报告。每张表保留原始来源、成绩日期或核对日期和评测条件；本站整理展示，是否复测以具体记录为准。</p></details>
       </section>
 
       <section class="atlas-section" id="catalog" aria-labelledby="catalog-title">
         <div class="section-heading">
-          <div><p class="eyebrow">01 / EXPLORE THE ATLAS</p><h2 id="catalog-title">下一项实验，从这里开始。</h2></div>
+          <div><p class="eyebrow">02 / EXPLORE THE ATLAS</p><h2 id="catalog-title">下一项实验，从这里开始。</h2></div>
           <div class="registry-status"><span class="status-dot"></span><span id="sync-status" role="status">正在读取目录…</span></div>
         </div>
         <div id="quick-domains" class="quick-domains" role="group" aria-label="快速选择科学域">
@@ -120,8 +109,37 @@
         </div>
       </section>
 
+      <section id="evaluate" class="platform-section evaluate-section" aria-labelledby="evaluate-title">
+        <div class="section-heading">
+          <div><p class="eyebrow">03 / RUN &amp; CONTRIBUTE</p><h2 id="evaluate-title">从选择任务，到提交结果。</h2></div>
+          <p class="section-note">制定计划 → 按官方协议运行 → 整理成绩。<br />团队与研究者都可以参与。</p>
+        </div>
+        <div id="evaluate-app"><p class="loading-state">正在准备评测工作台…</p></div>
+      </section>
+
+      <section id="frontier" class="frontier-section" aria-labelledby="frontier-title">
+        <div class="section-heading">
+          <div><p class="eyebrow"><span class="status-dot"></span> IN FOCUS / LONG-HORIZON SCIENCE</p><h2 id="frontier-title">从研究过程，到真实表现。</h2></div>
+          <div class="frontier-review"><span class="frontier-badge">编辑精选 · 非热度排名</span><span id="frontier-reviewed">正在核对来源…</span></div>
+        </div>
+        <nav class="frontier-jump" aria-label="科研前沿导航"><a href="#frontier-data"><span class="frontier-jump-title">01 / 科研轨迹数据 <b>↘</b></span><strong id="frontier-data-signal">—</strong><small>类本期精选过程数据</small></a><a href="#frontier-evaluations"><span class="frontier-jump-title">02 / 长程研究评测 <b>↘</b></span><strong id="frontier-benchmark-signal">—</strong><small id="frontier-benchmark-signal-label">任务规模以来源为准</small></a><a href="#frontier-performance"><span class="frontier-jump-title">03 / 模型与系统表现 <b>↘</b></span><strong id="frontier-score-signal">—</strong><small id="frontier-score-signal-label">公开报告成绩</small></a></nav>
+        <div id="frontier-data" class="frontier-block" aria-labelledby="frontier-data-title">
+          <div class="frontier-block-heading"><div><p class="eyebrow">PROCESS IS THE DATA</p><h3 id="frontier-data-title">不只看答案，也看研究如何发生。</h3></div><p>人类决策、合成构思与检索轨迹，<br />分别看待，保留原始口径。</p></div>
+          <div id="frontier-resources" class="frontier-resource-grid"></div>
+        </div>
+        <div id="frontier-evaluations" class="frontier-block" aria-labelledby="frontier-evaluations-title">
+          <div class="frontier-block-heading"><div><p class="eyebrow">TEST THE WHOLE RESEARCH LOOP</p><h3 id="frontier-evaluations-title">真正长程，测的是完整闭环。</h3></div><button class="frontier-catalog-link" data-frontier-catalog>查看总目录中的相关评测 ↗</button></div>
+          <div id="frontier-benchmarks" class="frontier-benchmark-grid"></div>
+        </div>
+        <div id="frontier-performance" class="frontier-block" aria-labelledby="frontier-performance-title">
+          <div class="frontier-block-heading"><div><p class="eyebrow">REPORTED RESULTS / SOURCE BY SOURCE</p><h3 id="frontier-performance-title">模型表现，要连同条件一起看。</h3></div><p>原作者公开报告 · 本站未复测<br />不同评测之间不合并排名。</p></div>
+          <div id="scoreboard-controls" class="scoreboard-controls" role="group" aria-label="选择成绩评测"></div>
+          <div class="scoreboard-layout"><div id="frontier-score-context" class="scoreboard-context"></div><div id="frontier-scores" class="scoreboard-results" aria-live="polite"></div></div>
+        </div>
+      </section>
+
       <section id="evidence" class="taxonomy-section" aria-labelledby="taxonomy-title">
-        <div class="section-heading"><div><p class="eyebrow">02 / THE BIGGER PICTURE</p><h2 id="taxonomy-title">看见覆盖，也看清边界。</h2></div><p class="section-note">学科、规模和机构关系各有证据。<br />发布、官方使用与第三方测试，分开看。</p></div>
+        <div class="section-heading"><div><p class="eyebrow">04 / THE BIGGER PICTURE</p><h2 id="taxonomy-title">看见覆盖，也看清边界。</h2></div><p class="section-note">学科、规模和机构关系各有证据。<br />发布、官方使用与第三方测试，分开看。</p></div>
         <div class="kpi-row" id="kpi-row"></div>
         <div class="taxonomy-grid">
           <article class="taxonomy-card taxonomy-card-highlight"><div class="card-title"><span>规模的可见部分</span><span class="card-number">01</span></div><div id="question-summary"></div><div class="data-note"><span aria-hidden="true">↳</span> 保留原始单位，不将题目、样本和分子相加。</div></article>
@@ -132,7 +150,7 @@
       </section>
 
       <section class="insights-section" aria-labelledby="capability-title">
-        <div class="section-heading"><div><p class="eyebrow">03 / CAPABILITY LANDSCAPE</p><h2 id="capability-title">能力，不止一个维度。</h2></div><p class="section-note">从理解问题到验证产物。<br />点击任一能力，找到相应基准。</p></div>
+        <div class="section-heading"><div><p class="eyebrow">05 / CAPABILITY LANDSCAPE</p><h2 id="capability-title">能力，不止一个维度。</h2></div><p class="section-note">从理解问题到验证产物。<br />点击任一能力，找到相应基准。</p></div>
         <div class="insight-grid">
           <article class="insight-card"><div class="card-title"><span>能力轴</span><span class="muted">CAPABILITY</span></div><div id="capability-bars" class="bar-list"></div></article>
           <article class="insight-card"><div class="card-title"><span>科研工作流</span><span class="muted">WORKFLOW</span></div><div id="workflow-bars" class="bar-list"></div></article>
@@ -141,12 +159,12 @@
       </section>
 
       <section id="suites" class="suites-section" aria-labelledby="suites-title">
-        <div class="section-heading"><div><p class="eyebrow">04 / CURATED COLLECTIONS</p><h2 id="suites-title">从一个问题，走向完整评测。</h2></div><p class="section-note">按研究目标组织基准。<br />选择一条路线，开始系统性探索。</p></div>
+        <div class="section-heading"><div><p class="eyebrow">06 / CURATED COLLECTIONS</p><h2 id="suites-title">从一个问题，走向完整评测。</h2></div><p class="section-note">按研究目标组织基准。<br />选择一条路线，开始系统性探索。</p></div>
         <div id="suite-list" class="suite-list"></div>
       </section>
 
       <section class="guide-section" aria-labelledby="guide-title">
-        <div class="guide-intro"><p class="eyebrow">A NOTE ON THIS ATLAS</p><h2 id="guide-title">每一次测量，<br />都从证据开始。</h2><p>这是科学评测的导航地图。找到条目后，继续核对任务定义、官方来源与访问边界。</p></div>
+        <div class="guide-intro"><p class="eyebrow">A NOTE ON THIS ATLAS</p><h2 id="guide-title">每一次测量，<br />都从证据开始。</h2><p>为大模型与 AI4S 团队提供共同的评测入口。选择适合的任务，保留运行条件和证据，让每次测量都能被理解与复核。</p></div>
         <div class="guide-steps">
           <article class="guide-step"><span>01</span><div><h3>定位能力</h3><p>确认科学领域、任务与能力边界。</p></div><span aria-hidden="true">↗</span></article>
           <article class="guide-step"><span>02</span><div><h3>理解任务</h3><p>阅读输入、输出与原始评分协议。</p></div><span aria-hidden="true">↗</span></article>
@@ -156,8 +174,8 @@
       </section>
     </main>
 
-    <footer class="footer shell"><div class="footer-brand"><strong>AI4S Atlas</strong><p>Measure what matters.<br />Understand what comes next.</p></div><div class="footer-meta"><span id="footer-meta">科学评测导航 · 官方证据优先</span><a href="https://github.com/Sci-ultron/ai4s-evaluation-atlas" target="_blank" rel="noreferrer">维护与贡献 ↗</a><a href="#top">回到顶部 ↑</a></div><p class="footer-fineprint">来源、许可及计数口径以各条目为准。目录分类为规则派生，未经逐条人工认证。</p></footer>
+    <footer class="footer shell"><div class="footer-brand"><strong>AI4S Atlas</strong><p>Measure what matters.<br />Understand what comes next.</p></div><div class="footer-meta"><span id="footer-meta">科学 AI 评测与公开成绩 · 官方证据优先</span><a href="https://github.com/Sci-ultron/ai4s-evaluation-atlas" target="_blank" rel="noreferrer">维护与贡献 ↗</a><a href="#top">回到顶部 ↑</a></div><p class="footer-fineprint">成绩与目录均保留来源和版本；缺失信息明确标注。评测在参与者自己的环境执行，公开提交经审核后收录。目录分类为规则派生。</p></footer>
     <div id="detail-drawer" class="drawer" aria-hidden="true"><div class="drawer-backdrop" data-close-drawer></div><aside class="drawer-panel"><div class="drawer-topline"><span>AI4S / BENCHMARK NOTES</span><button class="drawer-close" data-close-drawer aria-label="关闭详情">关闭 <span aria-hidden="true">×</span></button></div><div id="drawer-content"></div></aside></div>
-    <script src="app.js?v=9099db6acf28" defer></script>
+    <script src="app.js?v=6a04c87d03f0" defer></script>
   </body>
 </html>

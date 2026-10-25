@@ -55,7 +55,7 @@ for (const [, ref] of html.matchAll(/(?:src|href)="([^"]+)"/g)) {
 function element(tagName='div', attrs={}) {
   const classes = new Set((attrs.class||'').split(/\s+/).filter(Boolean));
   return { value: '', textContent: '', innerHTML: '', disabled: false, hidden: false,
-    tagName: String(tagName).toUpperCase(), dataset: {},
+    tagName: String(tagName).toUpperCase(), id:attrs.id||'', dataset: Object.fromEntries(Object.entries(attrs).filter(([key])=>key.startsWith('data-')).map(([key,value])=>[key.slice(5).replace(/-([a-z])/g,(_,c)=>c.toUpperCase()),value])),
     style: {}, attributes: {...attrs}, children: [], listeners: {}, scrolls: [],
     classList: {
       add: x => classes.add(x), remove: x => classes.delete(x), contains: x => classes.has(x),
@@ -66,6 +66,7 @@ function element(tagName='div', attrs={}) {
     append(child) { this.children.push(child); },
     setAttribute(k, v) { this.attributes[k] = String(v); },
     getAttribute(k) { return this.attributes[k]??null; },
+    hasAttribute(k) { return Object.hasOwn(this.attributes,k); },
     closest(selector) {
       for(const part of selector.split(',')) {
         const simple=part.trim();
@@ -101,11 +102,36 @@ async function boot(payload) {
     }
     return scoreboardNodes;
   };
+  // Materialize only the result explorer's dynamic controls; this makes the
+  // same render and delegated input paths execute in CI without a browser.
+  function materialize(node) {
+    if(node._parsedMarkup!==node.innerHTML){
+      node._parsedMarkup=node.innerHTML;
+      node._markupChildren=[...node.innerHTML.matchAll(/<([a-z][\w-]*)\b([^>]*)>/gi)].map(([,tag,raw])=>{
+        const attrs=Object.fromEntries([...raw.matchAll(/([\w-]+)(?:="([^"]*)")?/g)].map(([,key,value])=>[key,value??'']));
+        const child=element(tag,attrs);child.document=document;
+        child.value=attrs.value||'';
+        attachMarkupDOM(child);return child;
+      });
+    }
+    return node._markupChildren||[];
+  }
+  function matches(node,selector) {
+    if(selector.startsWith('#'))return node.id===selector.slice(1);
+    const attr=selector.match(/^\[([\w-]+)(?:="([^"]*)")?\]$/);
+    if(attr)return node.hasAttribute(attr[1])&&(attr[2]===undefined||node.getAttribute(attr[1])===attr[2]);
+    return node.tagName.toLowerCase()===selector;
+  }
+  function attachMarkupDOM(node) {
+    node.querySelectorAll=selector=>materialize(node).flatMap(child=>[...(matches(child,selector)?[child]:[]),...child.querySelectorAll(selector)]);
+    node.querySelector=selector=>node.querySelectorAll(selector)[0]||null;
+  }
+  if(nodes.has('results-app'))attachMarkupDOM(nodes.get('results-app'));
   const errors = [];
   const document={ body: { style: {} }, activeElement: null, listeners: {},
     getElementById: id => { assert.ok(nodes.has(id), `Missing DOM id ${id}`); return nodes.get(id); },
     createElement: tag => {const node=element(tag);node.document=document;return node;},
-    querySelector: selector => nodes.get(selector),
+    querySelector: selector => nodes.get(selector.startsWith('#')?selector.slice(1):selector),
     querySelectorAll: selector => selector==='[data-quick-domain]'?quickDomains:selector==='[data-scoreboard]'?scoreboardButtons():selector==='[data-frontier-catalog]'?frontierCatalogButtons:selector==='.drawer-panel button,.drawer-panel a'?[nodes.get('.drawer-close'),nodes.get('.drawer-last-link')]:[],
     addEventListener(name,fn) { (this.listeners[name]??=[]).push(fn); },
     dispatch(name,event) { for(const fn of this.listeners[name]||[])fn(event); },
@@ -113,7 +139,7 @@ async function boot(payload) {
   for(const node of [...nodes.values(),...quickDomains,...frontierCatalogButtons])node.document=document;
   document.activeElement=document.createElement('body');
   const context = vm.createContext({
-    URL, console: { error: e => errors.push(e) },
+    URL, URLSearchParams, console: { error: e => errors.push(e) },
     fetch: async url => { assert.equal(url, 'catalog.json'); return { ok: true, json: async () => structuredClone(payload) }; },
     document,
   });
@@ -416,4 +442,128 @@ for(const frontier of [undefined,{}, {resources:'invalid',benchmarks:null,scoreb
 }
 const invalid = await boot({ benchmarks: [{ id: 'raw-registry' }] });
 assert.equal(invalid.nodes.get('sync-status').textContent, '目录加载失败');
-console.log(`[OK] ${catalog.benchmark_count} benchmarks; contract, assets, search, filters, chips, views, mobile filters, pagination, shortcuts, details, frontier resources, isolated score protocols, safe sources, curated selection, fallback, error state`);
+// The result explorer executes against the same catalog and DOM paths as production.
+const resultRoot=nodes.get('results-app');
+assert.ok(resultRoot?.querySelector,'Result tests must materialize the explorer DOM');
+assert.match(resultRoot.innerHTML,/hub-stats/,'Explorer is mounted during normal initialization');
+assert.match(resultRoot.querySelector('[data-hub-output]').innerHTML,/hub-score-table/,'Explorer paints its initial result table');
+const resultModel=vm.runInContext('hubModel',context);
+const validFrontierBoards=(catalog.frontier?.scoreboards||[]).filter(board=>board?.columns?.length);
+assert.equal(resultModel.boards.length,catalog.evaluation_hub.benchmarks.length+validFrontierBoards.length,'Every source-backed board remains a separate protocol');
+assert.equal(resultModel.rows.length,catalog.evaluation_hub.results.length+validFrontierBoards.reduce((n,board)=>n+board.rows.length,0),'Normalization preserves all recorded rows, including missing scores');
+assert.equal(resultModel.rows.filter(row=>row.score===null).length,catalog.evaluation_hub.results.filter(row=>row.score===null).length+validFrontierBoards.reduce((n,board)=>n+board.rows.filter(row=>row.values[board.columns[0].key]==null).length,0));
+assert.equal(vm.runInContext('hubScore({score:0,unit:"%",decimals:2})',context),'0.00%');
+assert.equal(vm.runInContext('hubScore({score:null,unit:"%",decimals:2})',context),'—');
+assert.equal(vm.runInContext('hubScore({score:NaN,unit:"%"})',context),'—');
+assert.equal(vm.runInContext('hubScore({score:0.4809,unit:"",decimals:4})',context),'0.4809','Native metric units are not converted to pass rates');
+assert.equal(vm.runInContext('hubCurrentBoard().id',context),resultModel.boards.find(board=>board.id==='bio-v1-spatialbench')?.id||resultModel.boards[0].id);
+const resultQuery=resultRoot.querySelector('[data-hub-field="query"]');
+resultQuery.focus();resultQuery.value='no-such-model-in-the-result-explorer';resultRoot.dispatch('input',{target:resultQuery});
+assert.equal(vm.runInContext('hubFilteredRows().length',context),0);
+assert.match(resultRoot.querySelector('[data-hub-output]').innerHTML,/没有匹配的配置/);
+assert.equal(document.activeElement,resultQuery,'Typing updates only result content, preserving input identity and focus');
+resultQuery.value='';resultRoot.dispatch('input',{target:resultQuery});
+const activeResultRows=vm.runInContext('hubFilteredRows()',context), providerToFind=activeResultRows.find(row=>row.provider)?.provider;
+assert.ok(providerToFind,'Current board supplies a searchable provider');
+resultQuery.value=providerToFind;resultRoot.dispatch('input',{target:resultQuery});
+assert.ok(vm.runInContext('hubFilteredRows()',context).every(row=>[row.model,row.provider,row.harness].join(' ').toLowerCase().includes(providerToFind.toLowerCase())),'Model/provider keyword filter uses the active board only');
+resultQuery.value='';resultRoot.dispatch('input',{target:resultQuery});
+const harnessToFind=activeResultRows[0].harness,resultHarness=resultRoot.querySelector('[data-hub-field="harness"]');
+resultHarness.value=harnessToFind;resultRoot.dispatch('change',{target:resultHarness});
+assert.ok(vm.runInContext('hubFilteredRows()',context).every(row=>row.harness===harnessToFind));
+resultHarness.value='';resultRoot.dispatch('change',{target:resultHarness});
+const resultSort=resultRoot.querySelector('[data-hub-field="sort"]');
+resultSort.value='score-asc';resultRoot.dispatch('change',{target:resultSort});
+const ascendingResults=vm.runInContext('hubFilteredRows()',context), observedAscending=ascendingResults.filter(row=>row.score!==null);
+assert.ok(observedAscending.every((row,index)=>!index||observedAscending[index-1].score<=row.score),'Scores sort within the selected board');
+assert.ok(ascendingResults.slice(observedAscending.length).every(row=>row.score===null),'Missing scores stay after numeric zero and other numbers');
+const safeguardBoard=resultModel.boards.find(board=>board.assessment==='safeguards');
+assert.ok(safeguardBoard,'A separately classified safeguards board is available');
+resultRoot.dispatch('click',{target:resultRoot.querySelectorAll('[data-hub-assessment]').find(button=>button.dataset.hubAssessment==='safeguards')});
+assert.ok(vm.runInContext('hubFilteredRows()',context).every(row=>row.assessment==='safeguards'));
+assert.equal(vm.runInContext('hubCurrentBoard().assessment',context),'safeguards');
+assert.match(resultRoot.querySelector('[data-hub-output]').innerHTML,/SAFEGUARDS/);
+
+// Fixed fixtures test semantics without pinning volatile model counts or scores.
+const hubFixture={schema_version:'1.0.0',updated_at:'2026-10-25',sources:[
+  {id:'source-a',name:'Source A',url:'https://example.org/a',notes:['Protocol <script> is text'],protocol:'Fixed budget A'},
+  {id:'source-b',name:'Source B',url:'https://example.org/b',protocol:'Different budget B'},
+],benchmarks:[
+  {id:'fixture-cap-a',name:'Capability <A>',source_id:'source-a',source_url:'javascript:alert(1)',assessment:'capabilities',version:'v1',metric:'Pass',unit:'%',protocol:'Fixed budget A',score_date:null,data_updated_at:'2026-10-22',retrieved_at:'2026-10-25T01:00:00Z'},
+  {id:'fixture-cap-b',name:'Capability B',source_id:'source-b',source_url:'https://example.org/b',assessment:'capabilities',version:'v2',metric:'Native ratio',unit:'ratio',protocol:'Different budget B'},
+  {id:'fixture-safe-a',name:'Refusal A',source_id:'source-a',source_url:'https://example.org/safety',assessment:'safeguards',version:'v1',metric:'Refusal',unit:'%',protocol:'Safety protocol'},
+],results:[
+  {id:'a-zero',board_id:'fixture-cap-a',source_id:'source-a',configuration_id:'shared',model:'Shared Model',provider:'Provider A',harness:'Pi',score:0,coverage:{observed:1,total:3,complete:false}},
+  {id:'a-high',board_id:'fixture-cap-a',source_id:'source-a',configuration_id:'other',model:'Other Model',provider:'Provider A',harness:'Codex',score:75},
+  {id:'a-missing',board_id:'fixture-cap-a',source_id:'source-a',configuration_id:'missing',model:'Missing Model',provider:'Provider A',harness:'Pi',score:null},
+  {id:'b-ratio',board_id:'fixture-cap-b',source_id:'source-b',configuration_id:'shared',model:'Shared Model',provider:'Provider A',harness:'Pi',score:0.55},
+  {id:'a-safe',board_id:'fixture-safe-a',source_id:'source-a',configuration_id:'shared',model:'Shared Model',provider:'Provider A',harness:'Pi',score:25},
+]};
+const hubApp=await boot({...catalog,frontier:undefined,evaluation_hub:hubFixture});
+assert.deepEqual(hubApp.errors,[],'Source-specific fixtures render through the normal initialization');
+const fixtureResultRoot=hubApp.nodes.get('results-app'),fixtureOutput=fixtureResultRoot.querySelector('[data-hub-output]').innerHTML;
+assert.match(fixtureOutput,/Capability &lt;A&gt;/);
+assert.match(fixtureOutput,/Protocol &lt;script&gt; is text/);
+assert.doesNotMatch(fixtureOutput,/href="javascript:|<script>|Capability B|Native ratio/,'Unsafe links are inert and other protocols cannot leak into the current result table');
+assert.match(fixtureOutput,/成绩日期未披露/);
+assert.match(fixtureOutput,/源更新 2026-10-22/);
+assert.match(fixtureOutput,/本站核对 2026-10-25/);
+assert.match(fixtureOutput,/1\/3 项套件覆盖/);
+assert.match(fixtureOutput,/<strong>0.00<\/strong>/,'Zero remains a reported result');
+assert.match(fixtureOutput,/未报告/,'Null remains explicitly missing');
+const fixtureModel=vm.runInContext('hubModel',hubApp.context);
+const sourceAConfig=fixtureModel.rows.find(row=>row.id==='a-zero'),sourceBConfig=fixtureModel.rows.find(row=>row.id==='b-ratio');
+hubApp.context.sourceAConfig=sourceAConfig;hubApp.context.sourceBConfig=sourceBConfig;
+assert.notEqual(vm.runInContext('hubConfigurationKey(sourceAConfig)',hubApp.context),vm.runInContext('hubConfigurationKey(sourceBConfig)',hubApp.context),'Identical model/harness labels from different sources remain independent configurations');
+vm.runInContext('hubState.selected.add(hubConfigurationKey(sourceAConfig));hubState.selected.add(hubConfigurationKey(sourceBConfig));',hubApp.context);
+const matrix=vm.runInContext('hubComparisonMarkup()',hubApp.context);
+assert.match(matrix,/科学能力 \/ CAPABILITIES/);
+assert.match(matrix,/安全与拒答 \/ SAFEGUARDS/);
+assert.match(matrix,/<small>Pass · %<\/small>/);
+assert.match(matrix,/Native ratio · ratio/);
+assert.match(matrix,/<td>0.00%<\/td><td>—<\/td>/,'Source A score cannot fill the same-named Source B configuration');
+assert.match(matrix,/<td>—<\/td><td>0.55 ratio<\/td>/,'Different metric units remain on their own row');
+assert.doesNotMatch(matrix,/overall|weighted|总分|平均分/i,'Comparison does not manufacture a cross-benchmark aggregate');
+const unsafeSourceMarkup=vm.runInContext('hubSourceLink("data:text/html,<script>alert(1)</script>")',hubApp.context);
+assert.doesNotMatch(unsafeSourceMarkup,/href=|<script>/);
+hubApp.context.csvFixture=[{...sourceAConfig,model:'=CMD()',provider:'+Provider',harness:'@Harness',score:0},{...sourceAConfig,model:'Quoted "model", comma',score:null}];
+const resultCsv=vm.runInContext('hubCsv(csvFixture)',hubApp.context);
+assert.match(resultCsv,/"'=CMD\(\)"/);
+assert.match(resultCsv,/"'\+Provider"/);
+assert.match(resultCsv,/"'@Harness"/);
+assert.match(resultCsv,/"0","Pass","%"/,'CSV exports numeric zero explicitly');
+assert.match(resultCsv,/Quoted ""model"", comma/,'CSV quotes are escaped');
+assert.match(resultCsv,/"","Pass","%"/,'Missing CSV scores stay blank');
+assert.match(resultCsv,/not_reported/);
+assert.deepEqual(errors,[],'Explorer interaction paths cannot fail catalog initialization');
+
+// Contributions validate evidence locally before any external draft is opened.
+const contribution={benchmark_id:'gpqa',model:'Example model',harness:'Example harness',benchmark_version:'v1',metric:'accuracy',score:0,unit:'%',evaluated_at:'2026-10-25',source_url:'https://example.org/results',protocol:'Fixed version, budget and repetition protocol.'};
+const validateSubmission=rows=>context.validateEvaluationSubmission({results:rows},catalog.benchmarks);
+assert.equal(validateSubmission([contribution]).errors.length,0,'A real observed zero is valid');
+assert.equal(validateSubmission([contribution]).rows[0].score,0);
+for(const change of [{score:null},{score:'0'},{score:NaN},{score:101},{source_url:'javascript:alert(1)'},{source_url:'https://name:token@example.org/'},{evaluated_at:'2026-02-30'},{benchmark_id:'unregistered'}])assert.ok(validateSubmission([{...contribution,...change}]).errors.length,'Invalid or untraceable submissions cannot become drafts');
+assert.ok(validateSubmission([contribution,contribution]).errors.length,'Repeated measurements need distinguishable metadata');
+assert.ok(validateSubmission([]).errors.length);
+assert.ok(validateSubmission(Array(21).fill(contribution)).errors.length);
+assert.equal(validateSubmission([{...contribution,internal_field:'excluded'}]).rows[0].internal_field,undefined);
+const draft=new URL(context.evaluationIssueLink([contribution]));
+assert.equal(draft.origin,'https://github.com');
+assert.equal(draft.pathname,'/Sci-ultron/ai4s-evaluation-atlas/issues/new');
+assert.match(draft.searchParams.get('body'),/accuracy: 0 %/);
+assert.ok(context.evaluationIssueLink(Array(20).fill({...contribution,model:'Example '.repeat(100),protocol:'Protocol '.repeat(140)})).length<10000);
+assert.match(nodes.get('evaluate-app').innerHTML,/在自己的环境运行/);
+assert.match(nodes.get('evaluate-app').innerHTML,/草稿/);
+assert.doesNotMatch(nodes.get('evaluate-app').innerHTML,/type="password"|api[_-]?key/i);
+
+// A later file selection wins even if a previous read completes afterward.
+nodes.set('eval-upload-preview',element('div'));nodes.set('eval-message',element('p'));
+let resolveEarlierRead;
+const earlierRead=context.importEvaluationFile({size:100,text:()=>new Promise(resolve=>{resolveEarlierRead=resolve})});
+await context.importEvaluationFile({size:100,text:async()=>JSON.stringify({results:[{...contribution,model:'Latest selection'}]})});
+resolveEarlierRead(JSON.stringify({results:[{...contribution,model:'Earlier selection'}]}));await earlierRead;
+assert.match(nodes.get('eval-upload-preview').innerHTML,/Latest selection/);
+assert.doesNotMatch(nodes.get('eval-upload-preview').innerHTML,/Earlier selection/);
+assert.equal(vm.runInContext('evaluationPlanState.submission[0].model',context),'Latest selection');
+
+console.log(`[OK] ${catalog.benchmark_count} benchmarks; contract, assets, search, filters, chips, views, mobile filters, pagination, shortcuts, details, frontier resources, isolated score protocols, safe sources, curated selection, fallback, error state, result explorer normalization, live filters, 0/null, protocol/source separation, comparison, CSV safety`);
