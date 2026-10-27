@@ -574,6 +574,49 @@ assert.match(resultCsv,/"","Pass","%"/,'Missing CSV scores stay blank');
 assert.match(resultCsv,/not_reported/);
 assert.deepEqual(errors,[],'Explorer interaction paths cannot fail catalog initialization');
 
+// Source checks belong to each result row, even when its board is refreshed later.
+const retainedNote='=Retained <script>alert(1)</script>; not withdrawn, "historical"';
+const rowSourceFixture={schema_version:'1.0.0',reviewed_at:'2026-10-27',resources:[],benchmarks:[],
+  featured:{scoreboard_id:'row-source-fixture',metric_key:'score'},scoreboards:[{
+    id:'row-source-fixture',name:'Independent source fixture',benchmark_id:fixtureId,score_date:null,
+    retrieved_at:'2026-10-27T01:00:00Z',source:{label:'Independent source',url:'https://example.org/independent'},
+    protocol:'Fixed independent protocol',metric_note:'Each row keeps its last source check.',columns:[{key:'score',label:'Pass',unit:'%',decimals:1}],
+    rows:[{system:'Historical model / Old agent',retrieved_at:'2026-10-26T01:00:00Z',source_note:retainedNote,values:{score:40}},
+      {system:'Fresh model / Current agent',values:{score:50}}],
+  }]};
+const rowSourceApp=await boot({...catalog,frontier:rowSourceFixture});
+assert.deepEqual(rowSourceApp.errors,[]);
+const rowSourceModel=vm.runInContext('hubModel',rowSourceApp.context);
+const retainedRow=rowSourceModel.rows.find(row=>row.model==='Historical model / Old agent');
+const freshRow=rowSourceModel.rows.find(row=>row.model==='Fresh model / Current agent');
+assert.equal(retainedRow.retrieved_at,'2026-10-26T01:00:00Z','Board refresh cannot relabel an unverified historical row as checked today');
+assert.equal(freshRow.retrieved_at,'2026-10-27T01:00:00Z','Rows without overrides keep the board source-check fallback');
+assert.equal(retainedRow.source_note,retainedNote);
+assert.equal(retainedRow.score_date,null,'A retrieval date is never substituted for an unreported evaluation date');
+const retainedOutput=rowSourceApp.nodes.get('results-app').querySelector('[data-hub-output]').innerHTML;
+assert.match(retainedOutput,/上次核对 2026-10-26/);
+assert.match(retainedOutput,/&lt;script&gt;alert\(1\)&lt;\/script&gt;/);
+assert.doesNotMatch(retainedOutput,/<script>/,'Source notes are rendered as text');
+assert.match(retainedOutput,/<span class="hub-mobile-meta"><small class="hub-source-note"/,'A retained row remains visibly labelled when the mobile table hides its evidence column');
+const retainedBars=rowSourceApp.context.scoreVisualBarMarkup(rowSourceModel.boards[0],[retainedRow]);
+assert.match(retainedBars,/上次核对 2026-10-26/);
+assert.match(retainedBars,/&lt;script&gt;/);
+assert.doesNotMatch(retainedBars,/<script>/);
+const retainedHeatmap=rowSourceApp.context.prepareHeatmap(rowSourceModel,{board:'frontier::row-source-fixture',query:'',harness:'',sort:'score-desc',selected:new Set()});
+assert.match(rowSourceApp.context.scoreVisualHeatmapMarkup(retainedHeatmap,{selected:new Set()}),/上次核对 2026-10-26/,'Heatmap row labels keep historical disclosures');
+assert.match(rowSourceApp.context.scoreVisualDifferenceMarkup(retainedHeatmap),/上次核对 2026-10-26/,'Pairwise differences do not hide a historical source check');
+vm.runInContext('hubState.selected=new Set(hubModel.rows.filter(row=>row.board_id==="frontier::row-source-fixture").map(hubConfigurationKey))',rowSourceApp.context);
+assert.match(rowSourceApp.context.hubComparisonMarkup(),/上次核对 2026-10-26/,'Selected-configuration comparison retains row evidence');
+assert.match(rowSourceApp.nodes.get('frontier-scores').innerHTML,/上次核对 2026-10-26/,'The older frontier table also keeps the row-level disclosure');
+const retainedCsv=rowSourceApp.context.hubCsv([retainedRow]);
+assert.match(retainedCsv,/"source_note"/);
+assert.match(retainedCsv,/"2026-10-26T01:00:00Z"/);
+assert.match(retainedCsv,/"'=Retained <script>alert\(1\)<\/script>; not withdrawn, ""historical"""/,'Notes retain CSV quoting and formula protection');
+const retainedExport=rowSourceApp.context.hubExportDocument([retainedRow],rowSourceModel.boards[0]);
+assert.equal(retainedExport.results[0].source_note,retainedNote,'JSON retains the original source note');
+assert.equal(retainedExport.results[0].retrieved_at,'2026-10-26T01:00:00Z');
+assert.equal(rowSourceApp.context.hubRowSourceMarkup(freshRow),'','Unannotated rows gain no extra visual noise');
+
 // Contributions validate evidence locally before any external draft is opened.
 const contribution={benchmark_id:'gpqa',model:'Example model',harness:'Example harness',benchmark_version:'v1',metric:'accuracy',score:0,unit:'%',evaluated_at:'2026-10-25',source_url:'https://example.org/results',protocol:'Fixed version, budget and repetition protocol.'};
 const validateSubmission=rows=>context.validateEvaluationSubmission({results:rows},catalog.benchmarks);

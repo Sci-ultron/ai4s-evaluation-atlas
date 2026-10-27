@@ -181,7 +181,7 @@ function renderScoreboard(id){
   const columns=list(board.columns).filter(column=>column&&typeof column.key==='string'&&column.key);
   const rows=list(board.rows).filter(row=>row&&typeof row.system==='string');
   const score=(row,column)=>frontierScore(row.values?.[column.key],column)??'<span class="score-unavailable" aria-label="未报告">—</span>';
-  if(scores)scores.innerHTML=columns.length&&rows.length?`<div class="frontier-table-wrap" role="region" tabindex="0" aria-label="${esc((board.name||'模型表现')+'，可横向滚动')}"><table class="frontier-score-table"><caption>${esc(board.name||'模型表现')} · 公开报告结果</caption><thead><tr><th scope="col">模型 / 系统</th>${columns.map(column=>`<th scope="col">${esc(column.label||column.key)}${column.unit?` <span>(${esc(column.unit)})</span>`:''}</th>`).join('')}</tr></thead><tbody>${rows.map(row=>`<tr><th scope="row" class="score-system">${esc(row.system)}</th>${columns.map(column=>`<td>${score(row,column)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`:'<p class="frontier-empty">此评测的成绩明细待核实，请查看官方来源。</p>';
+  if(scores)scores.innerHTML=columns.length&&rows.length?`<div class="frontier-table-wrap" role="region" tabindex="0" aria-label="${esc((board.name||'模型表现')+'，可横向滚动')}"><table class="frontier-score-table"><caption>${esc(board.name||'模型表现')} · 公开报告结果</caption><thead><tr><th scope="col">模型 / 系统</th>${columns.map(column=>`<th scope="col">${esc(column.label||column.key)}${column.unit?` <span>(${esc(column.unit)})</span>`:''}</th>`).join('')}</tr></thead><tbody>${rows.map(row=>`<tr><th scope="row" class="score-system">${esc(row.system)}${hubRowSourceMarkup(row)}</th>${columns.map(column=>`<td>${score(row,column)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`:'<p class="frontier-empty">此评测的成绩明细待核实，请查看官方来源。</p>';
 }
 function frontierResultDate(board){return [board?.score_date?'成绩日期 '+board.score_date:'运行日期未披露',board?.source_updated_at?'来源更新 '+String(board.source_updated_at).slice(0,10):'',board?.retrieved_at?'本站核对 '+String(board.retrieved_at).slice(0,10):''].filter(Boolean).join(' · ')}
 function renderFrontier(){
@@ -246,7 +246,7 @@ function prepareHeatmap(model,state){
   const scope=scoreScopeKey(current),boards=model.boards.filter(board=>scoreScopeKey(board)===scope);
   const ids=new Set(boards.map(board=>board.id)),query=String(state.query||'').trim().toLowerCase();
   const sourceRows=model.rows.filter(row=>ids.has(row.board_id)&&(!state.harness||row.harness===state.harness)&&(!query||hubSearchText(row).includes(query)));
-  const configurations=[...new Map(sourceRows.map(row=>[scoreConfigurationKey(row),{key:scoreConfigurationKey(row),model:row.model,harness:row.harness,provider:row.provider,effort:row.effort}])).values()];
+  const configurations=[...new Map(sourceRows.map(row=>[scoreConfigurationKey(row),{key:scoreConfigurationKey(row),model:row.model,harness:row.harness,provider:row.provider,effort:row.effort,source_note:row.source_note,retrieved_at:row.retrieved_at}])).values()];
   const currentScores=new Map(sourceRows.filter(row=>row.board_id===current.id).map(row=>[scoreConfigurationKey(row),row.score]));
   configurations.sort((a,b)=>{
     if(state.sort==='model')return a.model.localeCompare(b.model)||a.harness.localeCompare(b.harness);
@@ -295,7 +295,7 @@ function scoreVisualBarMarkup(board,rows){
     const numeric=typeof row.score==='number'&&Number.isFinite(row.score),position=numeric?100*(row.score-domain.min)/range:zero,error=numeric?scoreChartUncertainty(row,board):null;
     const uncertainty=error?`<span class="score-error-line" style="left:${100*(row.score-error.value-domain.min)/range}%;width:${200*error.value/range}%" aria-hidden="true"></span>`:'';
     const errorLabel=error?`<small>± ${esc(error.value.toLocaleString('en-US',{maximumFractionDigits:error.decimals}))} 标准误<br>(${esc(error.unit)})</small>`:'';
-    return `<div class="score-bar-row" role="listitem"><div class="score-bar-label">${scoreChartText(row.model)}<small>${esc(hubHarnessLabel(row))}</small></div><div class="score-bar-track${numeric?'':' is-missing'}"><i class="score-zero-line" style="left:${zero}%"></i>${numeric?`<span class="score-bar-mark${row.score===0?' is-zero':''}" style="left:${Math.min(zero,position)}%;width:${Math.abs(position-zero)}%"></span>${uncertainty}`:'<span class="score-null-label">未报告</span>'}</div><strong class="score-bar-value">${esc(hubScore(row))}${errorLabel}</strong></div>`;
+    return `<div class="score-bar-row" role="listitem"><div class="score-bar-label">${scoreChartText(row.model)}<small>${esc(hubHarnessLabel(row))}</small>${hubRowSourceMarkup(row)}</div><div class="score-bar-track${numeric?'':' is-missing'}"><i class="score-zero-line" style="left:${zero}%"></i>${numeric?`<span class="score-bar-mark${row.score===0?' is-zero':''}" style="left:${Math.min(zero,position)}%;width:${Math.abs(position-zero)}%"></span>${uncertainty}`:'<span class="score-null-label">未报告</span>'}</div><strong class="score-bar-value">${esc(hubScore(row))}${errorLabel}</strong></div>`;
   }).join('');
   return `<figure class="score-figure"><figcaption><h3>${esc(board.name)} · 模型成绩</h3><p>${esc(board.metric)}${board.unit?' · '+esc(board.unit):' · 原生刻度'}。按当前筛选与排序显示模型和运行框架。</p></figcaption><div class="score-bar-axis"><div>${ticks}</div><span>${esc(board.unit||'原生分值')}</span></div><div class="score-bars" role="list" aria-label="当前评测的公开成绩条形图">${bars||'<p class="score-chart-empty">当前筛选没有配置。</p>'}</div>${rows.length>12?`<button class="score-chart-more" data-score-action="bars">${scoreVisualState.allBars?'收起为 12 个配置':'显示全部 '+rows.length+' 个配置'} ↕</button>`:''}<p class="score-chart-note">刻度从 ${esc(scoreChartTick(domain.min))} 到 ${esc(scoreChartTick(domain.max))}${board.unit==='%'?'%':''}；— 表示未报告，0 为真实成绩。${rows.some(row=>scoreChartUncertainty(row,board))?'误差线保留来源报告的 ±1 标准误，不是置信区间。':''}仅比较此表的版本和运行协议。${scoreChartSource(board)}</p></figure>`;
 }
@@ -307,7 +307,7 @@ function scoreVisualHeatmapMarkup(heatmap,state){
   const balanced=representatives.length>1;
   const visible=scoreVisualState.allHeatmap?configurations:(balanced?representatives:configurations).slice(0,8),lookup=new Map(heatmap.cells.map(cell=>[JSON.stringify([cell.configurationKey,cell.boardId]),cell]));
   const legend=heatmap.domain.ticks.map(value=>{const c=scoreChartColor(value,heatmap.domain);return `<span><i style="background:${c.background}"></i>${esc(scoreChartTick(value))}${heatmap.domain.unit==='%'?'%':''}</span>`}).join('');
-  const table=visible.length?`<div class="score-matrix-wrap" tabindex="0" role="region" aria-label="模型与评测基准的成绩热力图，可横向滚动"><table class="score-heatmap"><caption class="sr-only">同来源、版本、评估类型和指标的逐基准成绩</caption><thead><tr><th scope="col">模型 / 运行框架</th>${heatmap.boards.map(board=>`<th scope="col"><span>${esc(board.name)}</span></th>`).join('')}</tr></thead><tbody>${visible.map(config=>`<tr><th scope="row">${scoreChartText(config.model)}<small>${esc(hubHarnessLabel(config))}</small></th>${heatmap.boards.map(board=>{
+  const table=visible.length?`<div class="score-matrix-wrap" tabindex="0" role="region" aria-label="模型与评测基准的成绩热力图，可横向滚动"><table class="score-heatmap"><caption class="sr-only">同来源、版本、评估类型和指标的逐基准成绩</caption><thead><tr><th scope="col">模型 / 运行框架</th>${heatmap.boards.map(board=>`<th scope="col"><span>${esc(board.name)}</span></th>`).join('')}</tr></thead><tbody>${visible.map(config=>`<tr><th scope="row">${scoreChartText(config.model)}<small>${esc(hubHarnessLabel(config))}</small>${hubRowSourceMarkup(config)}</th>${heatmap.boards.map(board=>{
     const cell=lookup.get(JSON.stringify([config.key,board.id])),value=cell?.score??null,color=scoreChartColor(value,heatmap.domain);
     return `<td class="score-heat-cell${value===null?' is-missing':''}" style="${value===null?'':`background:${color.background};color:${color.color}`}" aria-label="${esc(config.model+' / '+config.harness+'，'+board.name+'，'+(value===null?'未报告':hubScore(cell.row)))}">${esc(value===null?'—':hubScore(cell.row,false))}</td>`;
   }).join('')}</tr>`).join('')}</tbody></table></div>`:'<p class="score-chart-empty">当前筛选没有可显示的模型配置。</p>';
@@ -327,7 +327,7 @@ function scoreVisualDifferenceMarkup(heatmap){
     const number=numeric?(row.value>0?'+':'')+row.value.toLocaleString('en-US',{maximumFractionDigits:unit==='百分点'?2:4}):'—';
     return `<div class="score-delta-row"><div class="score-delta-label">${esc(row.board.name)}</div><div class="score-delta-track${numeric?'':' is-missing'}"><i class="score-delta-zero"></i>${numeric?`<span class="score-delta-mark ${positive?'is-positive':'is-negative'}${row.value===0?' is-zero':''}" style="left:${positive?50:50-width}%;width:${width}%"></span>`:'<span class="score-null-label">缺少可比成绩</span>'}</div><strong class="score-delta-value">${esc(number)}</strong></div>`;
   }).join('');
-  return `<figure class="score-figure"><figcaption><h3>逐基准差值：A − B</h3><p>同来源、版本、基准、指标与单位逐项相减；差值不是统计显著性判断。</p></figcaption>${controls}<div class="score-pair-key"><span><i class="is-positive"></i>A：${scoreChartText(a.model)} <small>${esc(hubHarnessLabel(a))}</small></span><span><i class="is-negative"></i>B：${scoreChartText(b.model)} <small>${esc(hubHarnessLabel(b))}</small></span></div><div class="score-delta-axis"><div><span>−${esc(scoreChartTick(max))}</span><span>0</span><span>+${esc(scoreChartTick(max))}</span></div><span>${esc(unit)}</span></div><div class="score-deltas">${rows}</div><p class="score-chart-note">正值表示 A 的报告分数更高，负值表示 B 更高；缺少任一结果时不计算。${numbers.length} / ${differences.length} 项基准可比较，范围为 ±${esc(scoreChartTick(max))} ${esc(unit)}。${scoreChartSource(heatmap.current)}</p></figure>`;
+  return `<figure class="score-figure"><figcaption><h3>逐基准差值：A − B</h3><p>同来源、版本、基准、指标与单位逐项相减；差值不是统计显著性判断。</p></figcaption>${controls}${[a,b].filter(config=>config.source_note).map(config=>`<p class="score-chart-note">${esc(config.model)}${hubRowSourceMarkup(config)}</p>`).join('')}<div class="score-pair-key"><span><i class="is-positive"></i>A：${scoreChartText(a.model)} <small>${esc(hubHarnessLabel(a))}</small></span><span><i class="is-negative"></i>B：${scoreChartText(b.model)} <small>${esc(hubHarnessLabel(b))}</small></span></div><div class="score-delta-axis"><div><span>−${esc(scoreChartTick(max))}</span><span>0</span><span>+${esc(scoreChartTick(max))}</span></div><span>${esc(unit)}</span></div><div class="score-deltas">${rows}</div><p class="score-chart-note">正值表示 A 的报告分数更高，负值表示 B 更高；缺少任一结果时不计算。${numbers.length} / ${differences.length} 项基准可比较，范围为 ±${esc(scoreChartTick(max))} ${esc(unit)}。${scoreChartSource(heatmap.current)}</p></figure>`;
 }
 function scoreChartScopeMarkup(board){
   const source=board.source||{},date=board.score_date,updated=board.data_updated_at||source.data_updated_at,checked=board.retrieved_at||source.retrieved_at;
@@ -449,7 +449,7 @@ function buildEvaluationHub(catalog) {
       model:row.model||'模型未披露',provider:row.provider||'未单列',harness:row.harness||'未单列',metric:row.metric||board.metric,unit:row.unit??board.unit??'',
       version:row.version||board.version,assessment:row.assessment||board.assessment||'capabilities',source_id:row.source_id||board.source_id,
       source_url:row.source_url||board.source_url||board.source.url,score_date:row.score_date??row.date??board.score_date,
-      retrieved_at:row.retrieved_at||board.retrieved_at||board.source.retrieved_at,protocol:row.protocol||board.protocol||board.source.protocol,
+      retrieved_at:row.retrieved_at||board.retrieved_at||board.source.retrieved_at,source_note:typeof row.source_note==='string'?row.source_note:'',protocol:row.protocol||board.protocol||board.source.protocol,
       configuration_id:row.configuration_id||[row.model,row.harness].join('::'),decimals:board.decimals??2,secondary:[]}];
   });
   for(const board of list(catalog?.frontier?.scoreboards).filter(board=>board&&typeof board==='object')) {
@@ -466,7 +466,7 @@ function buildEvaluationHub(catalog) {
       domain_metrics:row.domain_metrics,trial_count:row.trial_count,passes:row.values?.passes,task_count:board.task_count,trials_per_task:board.trials_per_task,
       score:typeof row.values?.[primary.key]==='number'&&Number.isFinite(row.values[primary.key])?row.values[primary.key]:null,
       metric:primary.label,unit:primary.unit,decimals:primary.decimals,version:board.version||board.name,assessment:'capabilities',source_id:'frontier::'+board.id,
-      source_url:board.source?.url,score_date:board.score_date,retrieved_at:board.retrieved_at||catalog.frontier.reviewed_at,protocol:board.protocol,
+      source_url:board.source?.url,score_date:board.score_date,retrieved_at:row.retrieved_at||board.retrieved_at||catalog.frontier.reviewed_at,source_note:typeof row.source_note==='string'?row.source_note:'',protocol:board.protocol,
       secondary:list(board.columns).slice(1).map(column=>({label:column.label,value:row.values?.[column.key]??null,unit:column.unit,decimals:column.decimals}))}));
   }
   const preferred=hubPreferredBoardId({boards},catalog);
@@ -502,6 +502,11 @@ function hubCoverage(row) {
   const c=row.coverage;
   return c&&Number.isFinite(c.observed)&&Number.isFinite(c.total)?`${c.observed}/${c.total} 项套件覆盖`:'仅此公开报告';
 }
+function hubRowSourceMarkup(row){
+  if(!row?.source_note)return '';
+  const checked=row.retrieved_at?String(row.retrieved_at).slice(0,10):'未披露';
+  return `<small class="hub-source-note" style="display:block">${esc(row.source_note)}</small><small style="display:block">上次核对 ${esc(checked)}</small>`;
+}
 function hubCurrentBoard() {return hubModel.boards.find(board=>board.id===hubState.board)}
 function syncHubControls(root) {
   const boardSelect=root.querySelector('[data-hub-field="board"]'), harnessSelect=root.querySelector('[data-hub-field="harness"]');
@@ -524,7 +529,7 @@ function hubComparisonMarkup() {
     if(!boards.length)return '';
     return `<h4 class="hub-matrix-title">${assessment==='safeguards'?'安全与拒答 / SAFEGUARDS':'科学能力 / CAPABILITIES'}</h4><div class="hub-table-wrap" tabindex="0" role="region" aria-label="${assessment==='safeguards'?'安全':'能力'}逐基准配置对比，可横向滚动"><table class="hub-matrix"><caption class="sr-only">逐基准配置对比；空白项表示没有报告</caption><thead><tr><th scope="col">评测 · 指标</th>${selected.map(row=>`<th scope="col">${esc(row.model)}<small>${esc(hubHarnessLabel(row))}</small></th>`).join('')}</tr></thead><tbody>${boards.map(board=>`<tr><th scope="row">${hubSourceLink(board.source_url,board.name)}<small>${esc(board.metric)}${board.unit?' · '+esc(board.unit):''}</small></th>${selected.map(config=>{
       const row=hubModel.rows.find(row=>row.board_id===board.id&&hubConfigurationKey(row)===hubConfigurationKey(config));
-      return `<td>${esc(hubScore(row))}</td>`;
+      return `<td>${esc(hubScore(row))}${hubRowSourceMarkup(row)}</td>`;
     }).join('')}</tr>`).join('')}</tbody></table></div>`;
   };
   return head+table('capabilities')+table('safeguards')+'<p class="hub-footnote">— 表示该来源未报告。每行沿用各自版本、指标与协议，能力和安全分别阅读；不同来源的同名模型也保留为独立配置。</p>';
@@ -554,7 +559,7 @@ function paintHubResults(root) {
   const max=Math.max(...numeric.map(row=>Math.abs(row.score)),1);
   output.innerHTML=`<div class="hub-board-heading"><div><p class="eyebrow">${esc(board.assessment==='safeguards'?'SAFEGUARDS':'CAPABILITIES')} / ${esc(board.version||'版本见来源')}</p><h3>${esc(board.name)}</h3><p>${esc(metric)}${unit?' · '+esc(unit):''}${board.evaluation_count!=null?' · '+esc(board.evaluation_count)+' 项评估':''}</p></div><div class="hub-source-meta">${hubSourceLink(board.source_url||source.url,source.name||'查看原始成绩')}<span>${board.score_date?'成绩日期 '+esc(board.score_date):'成绩日期未披露'}</span>${board.data_updated_at||source.data_updated_at?`<span>源更新 ${esc(String(board.data_updated_at||source.data_updated_at).slice(0,10))}</span>`:''}<span>本站核对 ${esc(String(board.retrieved_at||source.retrieved_at||data?.evaluation_hub?.updated_at||'未披露').slice(0,10))}</span></div></div><details class="hub-protocol"><summary>查看评分口径、运行协议与覆盖范围 <span aria-hidden="true">＋</span></summary><p>${esc(board.metric_note||'按来源报告的单项指标展示；模型与运行框架共同构成一个配置。')}</p><p>${esc(protocol)}</p>${source.notes?.length?`<ul>${source.notes.map(note=>`<li>${esc(note)}</li>`).join('')}</ul>`:''}<p>表中的套件覆盖是该配置在来源整套评测中的报告范围，不是当前基准的成功次数。缺失成绩不按 0 计分。</p></details>${rows.length?`<div class="hub-table-wrap" tabindex="0" role="region" aria-label="${esc(board.name)} 成绩表，可横向滚动"><table class="hub-score-table"><caption class="sr-only">${esc(board.name)} · 相同来源、版本与协议下的公开成绩</caption><thead><tr><th scope="col">对比</th><th scope="col">序</th><th scope="col">模型 / 提供商</th><th scope="col">运行框架</th><th scope="col" class="hub-score-cell">${esc(metric)}${unit?' ('+esc(unit)+')':''}</th><th scope="col">证据与覆盖</th></tr></thead><tbody>${rows.map((row,index)=>{
     const key=hubConfigurationKey(row), selected=hubState.selected.has(key), score=hubScore(row,false), width=row.score===null?0:Math.max(0,Math.min(100,100*Math.abs(row.score)/max));
-    return `<tr${selected?' class="hub-selected-row"':''}><td><button class="hub-compare-toggle" data-hub-compare="${esc(key)}" aria-pressed="${selected}" aria-label="${esc((selected?'取消对比 ':'对比 ')+row.model+' / '+hubHarnessLabel(row))}">${selected?'✓':'＋'}</button></td><td class="hub-rank">${row.score===null?'—':index+1}</td><th scope="row"><span class="hub-model-name">${brandBadge(row.model)}</span><small>${esc(row.provider)}</small><small class="hub-mobile-meta">${esc(hubHarnessLabel(row))} · ${esc(hubCoverage(row))}</small></th><td><span class="hub-harness">${esc(hubHarnessLabel(row))}</span></td><td class="hub-score-cell"><strong>${esc(score)}</strong>${row.score===null?'<small>未报告</small>':`<span class="hub-score-bar" aria-hidden="true"><i style="width:${width}%"></i></span>`}</td><td class="hub-evidence"><span>${esc(hubCoverage(row))}</span>${hubSourceLink(row.source_url)}${row.secondary?.length?`<small>${row.secondary.map(item=>`${esc(item.label)} ${esc(hubScore({score:item.value,unit:item.unit,decimals:item.decimals}))}`).join(' · ')}</small>`:''}</td></tr>`;
+    return `<tr${selected?' class="hub-selected-row"':''}><td><button class="hub-compare-toggle" data-hub-compare="${esc(key)}" aria-pressed="${selected}" aria-label="${esc((selected?'取消对比 ':'对比 ')+row.model+' / '+hubHarnessLabel(row))}">${selected?'✓':'＋'}</button></td><td class="hub-rank">${row.score===null?'—':index+1}</td><th scope="row"><span class="hub-model-name">${brandBadge(row.model)}</span><small>${esc(row.provider)}</small><small class="hub-mobile-meta">${esc(hubHarnessLabel(row))} · ${esc(hubCoverage(row))}</small>${row.source_note?`<span class="hub-mobile-meta">${hubRowSourceMarkup(row)}</span>`:''}</th><td><span class="hub-harness">${esc(hubHarnessLabel(row))}</span></td><td class="hub-score-cell"><strong>${esc(score)}</strong>${row.score===null?'<small>未报告</small>':`<span class="hub-score-bar" aria-hidden="true"><i style="width:${width}%"></i></span>`}</td><td class="hub-evidence"><span>${esc(hubCoverage(row))}</span>${hubSourceLink(row.source_url)}${hubRowSourceMarkup(row)}${row.secondary?.length?`<small>${row.secondary.map(item=>`${esc(item.label)} ${esc(hubScore({score:item.value,unit:item.unit,decimals:item.decimals}))}`).join(' · ')}</small>`:''}</td></tr>`;
   }).join('')}</tbody></table></div>`:'<div class="hub-empty"><strong>没有匹配的配置</strong><p>调整模型关键词或运行框架，或重置筛选查看本评测的全部成绩。</p><button class="hub-text-button" data-hub-reset>重置筛选 ↺</button></div>'}<p class="hub-footnote">序号表示当前筛选与排序中的位置。仅在本表协议内比较；这里汇集公开报告，本站未复测这些模型。${board.legacy?'原报告未把模型与框架拆为独立字段，系统配置按原文保留。':''}</p>`;
   if(comparison)comparison.innerHTML=hubComparisonMarkup();
   const notice=root.querySelector('[data-hub-notice]');
@@ -562,13 +567,13 @@ function paintHubResults(root) {
   renderScoreVisuals();
 }
 function hubCsv(rows) {
-  const headers=['benchmark','model','provider','harness','score','metric','unit','version','assessment','score_date','retrieved_at','source_url','protocol','suite_coverage','status','configuration','reasoning_effort','trial_count','standard_error','standard_error_unit','passes'];
+  const headers=['benchmark','model','provider','harness','score','metric','unit','version','assessment','score_date','retrieved_at','source_url','protocol','suite_coverage','status','configuration','reasoning_effort','trial_count','standard_error','standard_error_unit','passes','source_note'];
   const escape=value=>{
     let text=String(value??'');
     if(typeof value!=='number'&&/^[=+@\-\t\r]/.test(text))text="'"+text;
     return '"'+text.replaceAll('"','""')+'"';
   };
-  return [headers,...rows.map(row=>{const error=scoreChartUncertainty(row,hubModel.boards.find(board=>board.id===row.board_id));return [row.benchmark_name,row.model,row.provider,row.harness,row.score,row.metric,row.unit,row.version,row.assessment,row.score_date,row.retrieved_at,row.source_url,row.protocol,hubCoverage(row),row.score===null?'not_reported':'reported',row.configuration_label,row.effort,row.trial_count,error?.value,error?.unit,row.passes]})].map(row=>row.map(escape).join(',')).join('\r\n');
+  return [headers,...rows.map(row=>{const error=scoreChartUncertainty(row,hubModel.boards.find(board=>board.id===row.board_id));return [row.benchmark_name,row.model,row.provider,row.harness,row.score,row.metric,row.unit,row.version,row.assessment,row.score_date,row.retrieved_at,row.source_url,row.protocol,hubCoverage(row),row.score===null?'not_reported':'reported',row.configuration_label,row.effort,row.trial_count,error?.value,error?.unit,row.passes,row.source_note]})].map(row=>row.map(escape).join(',')).join('\r\n');
 }
 function hubExportDocument(rows,board){
   const exportedBoard=board?.task_matrix?{...board,task_matrix:{tasks:board.task_matrix.tasks,rows:Object.fromEntries(rows.flatMap(row=>{const id=row.source_row_id;return id&&board.task_matrix.rows[id]?[[id,board.task_matrix.rows[id]]]:[]}))}}:board;
