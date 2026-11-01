@@ -462,7 +462,7 @@ function buildEvaluationHub(catalog) {
       task_count:board.task_count,trials_per_task:board.trials_per_task,task_matrix:board.task_matrix,api_source:board.api_source,
       legacy:!list(board.rows).some(row=>row.model&&row.agent)});
     list(board.rows).forEach((row,index)=>rows.push({id:id+'::'+(row.id||index),source_row_id:row.id,board_id:id,benchmark_id:board.benchmark_id,benchmark_name:board.name,configuration_id:row.id||row.system,configuration_label:row.system,
-      model:row.model||row.system,provider:row.provider||'原报告未单列',harness:row.agent||'见系统配置',harness_provider:row.agent_provider,effort:row.reasoning_effort,
+      model:row.model||row.system,provider:row.provider||'原报告未单列',harness:row.agent||'原报告未单列',harness_provider:row.agent_provider,effort:row.reasoning_effort,
       domain_metrics:row.domain_metrics,trial_count:row.trial_count,passes:row.values?.passes,task_count:board.task_count,trials_per_task:board.trials_per_task,
       score:typeof row.values?.[primary.key]==='number'&&Number.isFinite(row.values[primary.key])?row.values[primary.key]:null,
       metric:primary.label,unit:primary.unit,decimals:primary.decimals,version:board.version||board.name,assessment:'capabilities',source_id:'frontier::'+board.id,
