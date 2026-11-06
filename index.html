@@ -3,106 +3,80 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#fafaf8" />
+    <meta name="theme-color" content="#ffffff" />
     <meta name="description" content="以 Terminal-Bench-Science 为核心的科学 AI 评测工作台：查看官方模型成绩、学科差异与逐任务结果，选择评测并按官方协议运行。" />
     <title>Terminal-Bench-Science 成绩与任务 · AI4S Atlas</title>
     <link rel="icon" type="image/svg+xml" href="favicon.svg?v=d7034d7647aa" />
-    <link rel="stylesheet" href="styles.css?v=66222c84cb91" />
+    <link rel="stylesheet" href="styles.css?v=8f9e309b92ae" />
   </head>
-  <body>
+  <body class="vals-layout">
     <a class="skip-link" href="#results">跳至评测成绩</a>
     <header class="site-header">
       <div class="topbar shell">
-        <a class="brand" href="#top" aria-label="AI4S Atlas 首页">
+        <a class="brand" href="#top" data-app-view="benchmark" data-tbs-view="bars" aria-label="AI4S Atlas 首页">
           <svg class="brand-mark atlas-coordinate-mark" viewBox="0 0 64 64" fill="none" aria-hidden="true"><g class="mark-frame" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="square" stroke-linejoin="miter"><path class="mark-frame-nw" d="M8 22V8h14"/><path class="mark-frame-ne" d="M42 8h14v14"/><path class="mark-frame-se" d="M56 42v14H42"/><path class="mark-frame-sw" d="M22 56H8V42"/></g><path class="mark-core" fill="currentColor" fill-rule="evenodd" d="M19 44 29.3 19h5.4L45 44h-7.2l-2-5.6h-7.6L26.2 44H19Zm11.4-11.8h3.2L32 27.4l-1.6 4.8Z"/><rect class="mark-accent" x="52.5" y="4.5" width="7" height="7" fill="#61766a"/></svg>
           <span>AI4S <strong>Atlas</strong><small>Scientific AI Benchmarks</small></span>
         </a>
-        <nav class="main-nav" aria-label="主导航">
-          <a class="nav-primary" href="#results" data-tbs-view="bars">TB-Science</a>
-          <a href="#catalog">选择评测</a>
-          <a href="#evaluate">开始评测</a>
-          <a class="nav-frontier" href="#frontier">科研前沿</a>
+        <nav id="main-navigation" class="main-nav" aria-label="主导航">
+          <a href="#results" data-app-view="benchmark" data-tbs-view="bars" aria-current="page">TB-Science</a>
+          <a href="#catalog" data-app-view="catalog">评测目录</a>
+          <a href="#model-comparison" data-app-view="benchmark">配置对比</a>
+          <a href="#evaluate" data-app-view="evaluate">开始评测 ↗</a>
+          <a href="#frontier" data-app-view="frontier">科研前沿</a>
+          <a href="#insights" data-app-view="insights">平台统计</a>
         </nav>
+        <button id="nav-menu-toggle" class="nav-menu-toggle" type="button" aria-controls="main-navigation" aria-expanded="false" aria-label="打开导航菜单"><span>菜单</span><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" stroke-width="1.2"/></svg></button>
         <a class="header-github" href="https://github.com/Sci-ultron/ai4s-evaluation-atlas" target="_blank" rel="noreferrer">GitHub <span aria-hidden="true">↗</span></a>
       </div>
     </header>
+    <div class="benchmark-context" aria-label="当前评测上下文">
+      <label class="context-domain"><span class="sr-only">切换评测主题</span><select id="benchmark-domain-select" aria-label="切换评测主题"><option value="science">SCIENCE · 科学评测</option><option value="biology">BIOLOGY · 生物</option><option value="agents">RESEARCH AGENTS · 科研 Agent</option><option value="physics">PHYSICS · 物理</option></select><span class="context-chevron" aria-hidden="true">⌄</span></label>
+      <label class="context-benchmark"><span class="sr-only">切换当前评测与协议</span><select id="benchmark-context-select" aria-label="切换当前评测与协议"><option>TERMINAL-BENCH-SCIENCE</option></select></label>
+      <span class="context-status" id="context-status">PUBLIC EVALUATION RESULTS</span>
+    </div>
 
-    <main id="top" class="shell">
-      <section class="hero" aria-labelledby="hero-title">
-        <div class="hero-copy">
-          <p class="eyebrow"><span class="status-dot"></span> IN FOCUS / TERMINAL-BENCH-SCIENCE</p>
-          <h1 id="hero-title" class="tbs-hero-title"><span>Terminal-Bench-</span><br /><span class="hero-word">Science<span class="pixel-period" aria-hidden="true"></span></span></h1>
-          <p class="tbs-hero-subtitle">科学 Agent，放进真实任务。</p>
-          <p class="lede">以 Terminal-Bench-Science 为核心，<br />面向大模型公司、AI4S 团队与研究者。<br class="desktop-break" />从模型总分到学科与任务差异，连同运行条件一起看。</p>
-          <div class="hero-actions">
-            <a class="button button-primary" href="#results" data-tbs-view="bars">查看官方成绩 <span aria-hidden="true">↗</span></a>
-            <a class="button button-ghost" href="#evaluate" data-eval-start="terminal-bench-science-scientific-agent-benchmark">运行 TB-Science <span aria-hidden="true">→</span></a>
-            <button class="button button-ghost catalog-download" id="download-catalog">下载目录 <span aria-hidden="true">↓</span></button>
-          </div>
-          <div class="hero-topics" aria-label="Terminal-Bench-Science 快速入口"><a href="#results" data-tbs-view="bars">官方模型榜 ↗</a><a href="#score-visuals-app" data-tbs-view="tasks">70 任务热图 ↗</a><a href="#evaluate" data-eval-start="terminal-bench-science-scientific-agent-benchmark">评测协议与提交 ↗</a></div>
-          <div class="hero-signal" aria-labelledby="hero-signal-title">
-  <div class="hero-signal-heading">
-    <div><span class="signal-overline">THE SCIENTIFIC LOOP</span><h2 id="hero-signal-title">从任务，到可复核的证据。</h2></div>
-    <button id="motion-toggle" class="motion-toggle" type="button" aria-pressed="true" aria-label="暂停装饰动画"><span id="motion-toggle-icon" aria-hidden="true">Ⅱ</span><span id="motion-toggle-label">暂停动画</span></button>
-  </div>
-  <svg class="hero-signal-map" viewBox="0 0 480 112" fill="none" aria-hidden="true" focusable="false" data-motion-reveal>
-    <g class="signal-guide" stroke="currentColor" stroke-width=".6">
-      <path d="M8 56h464M240 10v90"/><path d="M194 12h92v88h-92z" stroke-dasharray="2 5"/>
-      <path d="M208 24h64v64h-64z"/><path d="M224 24v64M240 24v64M256 24v64M208 40h64M208 56h64M208 72h64"/>
-      <path d="M8 16v8m-4-4h8M472 88v8m-4-4h8"/>
-    </g>
-    <g class="signal-routes" stroke="currentColor" stroke-width="1.1">
-      <path d="M32 26h86l38 30h52"/><path d="M32 56h176"/><path d="M32 86h86l38-30h52"/>
-      <path d="M272 56h176"/>
-    </g>
-    <g class="signal-inputs" fill="var(--canvas,#fafaf8)" stroke="currentColor" stroke-width="1.2">
-      <path d="M25 19h14v14H25z"/><circle cx="32" cy="56" r="7"/><path d="m32 77 9 9-9 9-9-9z"/>
-    </g>
-    <g class="signal-flow" stroke="var(--signal-terra,#b87359)" stroke-width="1.7" stroke-linecap="round">
-      <path class="signal-route signal-route-a" pathLength="100" d="M40 26h78l38 30h52"/>
-      <path class="signal-route signal-route-b" pathLength="100" d="M40 56h168"/>
-      <path class="signal-route signal-route-c" pathLength="100" d="M42 86h76l38-30h52"/>
-    </g>
-    <g class="signal-coordinate" stroke="var(--signal-sage,#52715f)" stroke-width="1.6">
-      <path d="M208 35V24h11m42 0h11v11m0 42v11h-11m-42 0h-11V77"/>
-      <path d="M232 56h16m-8-8v16"/>
-      <circle class="signal-core" cx="240" cy="56" r="12"/>
-    </g>
-    <path class="signal-route signal-route-output" pathLength="100" d="M272 56h168" stroke="var(--signal-sage,#52715f)" stroke-width="1.8" stroke-linecap="round"/>
-    <g class="signal-output" stroke="currentColor" stroke-width="1.2" fill="var(--canvas,#fafaf8)">
-      <rect x="440" y="44" width="24" height="24" rx="2"/>
-      <path d="m446 56 4 4 8-8" stroke="var(--signal-sage,#52715f)" stroke-width="1.8"/>
-    </g>
-    <g class="signal-points" fill="currentColor"><circle cx="118" cy="26" r="1.6"/><circle cx="118" cy="86" r="1.6"/><circle cx="350" cy="56" r="1.6"/></g>
-    <g class="signal-axis" stroke="currentColor" stroke-width=".7"><path d="M78 102h27m6 0h10m6 0h4M349 14h27m6 0h10m6 0h4"/></g>
-  </svg>
-  <div class="hero-signal-caption"><span>01 / 任务</span><span>02 / 测量协议</span><span>03 / 公开证据</span></div>
-  <p class="signal-note" id="motion-status">流程示意 · 非实时评测</p>
-</div>
+    <main class="shell atlas-main">
+      <section id="top" class="benchmark-hero" data-atlas-view="benchmark" aria-labelledby="benchmark-title">
+        <div class="benchmark-hero-inner">
+          <div class="benchmark-breadcrumb"><a href="#catalog" data-app-view="catalog">BENCHMARKS</a><span>/</span><span id="benchmark-breadcrumb-domain">SCIENCE</span></div>
+          <span class="benchmark-kind" id="benchmark-kind"><i aria-hidden="true"></i>ACADEMIC · OFFICIAL</span>
+          <h1 id="benchmark-title">Terminal-Bench-Science</h1>
+          <div class="benchmark-meta"><span id="benchmark-updated">正在核对来源日期…</span><span id="benchmark-version">v0.1.0</span></div>
+          <div class="benchmark-actions"><a id="benchmark-source-link" href="https://www.terminal-bench-science.ai/" target="_blank" rel="noreferrer">查看原始榜单 ↗</a><a id="benchmark-run-link" href="#evaluate" data-eval-start="terminal-bench-science-scientific-agent-benchmark">运行此评测 ↗</a><a href="#benchmark-methodology">评测方法 ↓</a></div>
+          <h2 class="benchmark-intro" id="benchmark-description">由科学家贡献的真实科研工作流，覆盖五个科学领域。</h2>
+          <p id="benchmark-summary" class="benchmark-summary">正在读取模型与运行框架的公开成绩…</p>
         </div>
-        <aside id="hero-frontier" class="hero-frontier" aria-label="Terminal-Bench-Science 焦点"><p class="eyebrow">TERMINAL-BENCH-SCIENCE</p><p>正在读取官方评测数据…</p></aside>
       </section>
 
-      <section class="signal-strip" aria-label="目录概览">
+      <section class="signal-strip" aria-label="目录概览" data-atlas-view="catalog" hidden>
         <div class="signal-cell"><span id="hero-count">—</span><small>评测基准 <span>BENCHMARKS</span></small></div>
         <div class="signal-cell"><span id="hero-domains">—</span><small>科学领域 <span>DOMAINS</span></small></div>
         <div class="signal-cell"><span id="hero-suites">—</span><small>评测套件 <span>SUITES</span></small></div>
         <div class="signal-cell"><span id="hero-orgs">—</span><small>关联机构 <span>ORGANIZATIONS</span></small></div>
       </section>
 
-      <section id="results" class="platform-section results-section" aria-labelledby="results-title">
-        <div class="section-heading">
-          <div><p class="eyebrow">01 / TERMINAL-BENCH-SCIENCE &amp; BEYOND</p><h2 id="results-title">先看 TB-Science，再展开科学评测。</h2></div>
-          <p class="section-note">官方榜与 AA 独立评测分别查看。<br />保留模型、运行框架、推理配置与原始来源。</p>
-        </div>
+      <section id="results" class="platform-section results-section benchmark-results" data-atlas-view="benchmark" aria-labelledby="benchmark-title">
         <div id="results-app"><p class="loading-state">正在整理公开评测成绩…</p></div>
-        <details class="platform-methodology"><summary>这些成绩如何组织？</summary><p>Terminal-Bench-Science 是当前主评测入口；官方榜与 Artificial Analysis（AA）评测保留各自的协议、模型配置和指标，分别比较。生物、化学等科学评测作为扩展专题继续收录。</p><p>我们参考 <a href="https://benchmarks.bio/" target="_blank" rel="noreferrer">benchmarks.bio ↗</a>，将模型与运行框架作为独立配置，逐项展示基准成绩，分开呈现能力与安全评估。缺失结果保留为空，不与 0 分混淆。不同版本、协议和指标的成绩分别查看；成绩中心不计算跨基准综合分。</p><p>已收录成绩来自原作者或独立评测机构的公开报告。每张表保留原始来源、成绩日期或核对日期和评测条件；本站整理展示，是否复测以具体记录为准。</p></details>
+
       </section>
 
-      <section class="atlas-section" id="catalog" aria-labelledby="catalog-title">
+      <section id="benchmark-methodology" class="benchmark-methodology" data-atlas-view="benchmark" aria-labelledby="methodology-title">
+        <h2 id="methodology-title">Background</h2>
+        <p id="benchmark-background">Terminal-Bench-Science 以容器内的科学终端任务，检验数据分析、建模、仿真和证明等真实科研工作。</p>
+        <h2>Methodology</h2>
+        <p id="benchmark-protocol">正在读取当前来源的运行协议…</p>
+        <h2>Scoring</h2>
+        <p id="benchmark-scoring">成绩按来源、版本与运行框架分别报告。</p>
+        <div id="benchmark-domain-scope"><h2>Scientific domains</h2><div id="benchmark-domain-counts" class="benchmark-domain-grid"></div></div>
+        <details class="more-source-context"><summary>基准背景、开发版与官方来源</summary><aside id="hero-frontier" class="hero-frontier" aria-label="Terminal-Bench-Science 焦点"></aside></details>
+        <details class="platform-methodology"><summary>这些成绩如何组织？</summary><p>Terminal-Bench-Science 是当前主评测入口；官方榜与 Artificial Analysis（AA）评测保留各自的协议、模型配置和指标，分别比较。生物、化学等科学评测作为扩展专题继续收录。</p><p>我们参考 <a href="https://benchmarks.bio/" target="_blank" rel="noreferrer">benchmarks.bio ↗</a>，将模型与运行框架作为独立配置，逐项展示基准成绩，分开呈现能力与安全评估。缺失结果保留为空，不与 0 分混淆。不同版本、协议和指标的成绩分别查看；成绩中心不计算跨基准综合分。</p><p>已收录成绩来自原作者或独立评测机构的公开报告。每张表保留原始来源、成绩日期或核对日期和评测条件；本站整理展示，是否复测以具体记录为准。</p></details>
+        <div class="benchmark-related"><h2>Related benchmarks</h2><p>继续查看其他科学评测及其独立运行协议。</p><div id="benchmark-related-links"></div></div>
+      </section>
+
+      <section class="atlas-section" id="catalog" data-atlas-view="catalog" hidden aria-labelledby="catalog-title">
         <div class="section-heading">
           <div><p class="eyebrow">02 / EXPLORE THE ATLAS</p><h2 id="catalog-title">下一项实验，从这里开始。</h2></div>
-          <div class="registry-status"><span class="status-dot"></span><span id="sync-status" role="status">正在读取目录…</span></div>
+          <button class="button button-ghost catalog-download" id="download-catalog">下载目录 ↓</button><div class="registry-status"><span class="status-dot"></span><span id="sync-status" role="status">正在读取目录…</span></div>
         </div>
         <div id="quick-domains" class="quick-domains" role="group" aria-label="快速选择科学域">
           <button data-quick-domain="" aria-pressed="true">全部评测 <span>↗</span></button>
@@ -149,7 +123,7 @@
         </div>
       </section>
 
-      <section id="evaluate" class="platform-section evaluate-section" aria-labelledby="evaluate-title">
+      <section id="evaluate" data-atlas-view="evaluate" hidden class="platform-section evaluate-section" aria-labelledby="evaluate-title">
         <div class="section-heading">
           <div><p class="eyebrow">03 / RUN &amp; CONTRIBUTE</p><h2 id="evaluate-title">从选择任务，到提交结果。</h2></div>
           <p class="section-note">制定计划 → 按官方协议运行 → 整理成绩。<br />团队与研究者都可以参与。</p>
@@ -157,7 +131,7 @@
         <div id="evaluate-app"><p class="loading-state">正在准备评测工作台…</p></div>
       </section>
 
-      <section id="frontier" class="frontier-section" aria-labelledby="frontier-title">
+      <section id="frontier" data-atlas-view="frontier" hidden class="frontier-section" aria-labelledby="frontier-title">
         <div class="section-heading">
           <div><p class="eyebrow"><span class="status-dot"></span> IN FOCUS / LONG-HORIZON SCIENCE</p><h2 id="frontier-title">从研究过程，到真实表现。</h2></div>
           <div class="frontier-review"><span class="frontier-badge">编辑精选 · 非热度排名</span><span id="frontier-reviewed">正在核对来源…</span></div>
@@ -178,7 +152,7 @@
         </div>
       </section>
 
-      <section id="evidence" class="taxonomy-section" aria-labelledby="taxonomy-title">
+      <section id="evidence" data-atlas-view="insights" hidden class="taxonomy-section" aria-labelledby="taxonomy-title">
         <div class="section-heading"><div><p class="eyebrow">04 / THE BIGGER PICTURE</p><h2 id="taxonomy-title">看见覆盖，也看清边界。</h2></div><p class="section-note">学科、规模和机构关系各有证据。<br />发布、官方使用与第三方测试，分开看。</p></div>
         <div class="kpi-row" id="kpi-row"></div>
         <div class="taxonomy-grid">
@@ -189,7 +163,7 @@
         <p class="section-footnote">机构关系允许重叠；暂无证据表示尚未登记。官方使用依据所属域名或已登记账号分类，其余关系保留第三方或待核实标记。</p>
       </section>
 
-      <section class="insights-section" aria-labelledby="capability-title">
+      <section id="insights" class="insights-section" data-atlas-view="insights" hidden aria-labelledby="capability-title">
         <div class="section-heading"><div><p class="eyebrow">05 / CAPABILITY LANDSCAPE</p><h2 id="capability-title">能力，不止一个维度。</h2></div><p class="section-note">从理解问题到验证产物。<br />点击任一能力，找到相应基准。</p></div>
         <div class="insight-grid">
           <article class="insight-card"><div class="card-title"><span>能力轴</span><span class="muted">CAPABILITY</span></div><div id="capability-bars" class="bar-list"></div></article>
@@ -198,12 +172,12 @@
         </div>
       </section>
 
-      <section id="suites" class="suites-section" aria-labelledby="suites-title">
+      <section id="suites" data-atlas-view="catalog" hidden class="suites-section" aria-labelledby="suites-title">
         <div class="section-heading"><div><p class="eyebrow">06 / CURATED COLLECTIONS</p><h2 id="suites-title">从一个问题，走向完整评测。</h2></div><p class="section-note">按研究目标组织基准。<br />选择一条路线，开始系统性探索。</p></div>
         <div id="suite-list" class="suite-list"></div>
       </section>
 
-      <section class="guide-section" aria-labelledby="guide-title">
+      <section class="guide-section" data-atlas-view="insights" hidden aria-labelledby="guide-title">
         <div class="guide-intro"><p class="eyebrow">A NOTE ON THIS ATLAS</p><h2 id="guide-title">每一次测量，<br />都从证据开始。</h2><p>为大模型与 AI4S 团队提供共同的评测入口。选择适合的任务，保留运行条件和证据，让每次测量都能被理解与复核。</p></div>
         <div class="guide-steps">
           <article class="guide-step"><span>01</span><div><h3>定位能力</h3><p>确认科学领域、任务与能力边界。</p></div><span aria-hidden="true">↗</span></article>
@@ -214,8 +188,8 @@
       </section>
     </main>
 
-    <footer class="footer shell"><div class="footer-brand"><a class="footer-signature" href="#top" aria-label="AI4S Atlas 首页"><svg class="brand-mark atlas-coordinate-mark" viewBox="0 0 64 64" fill="none" aria-hidden="true"><g class="mark-frame" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="square" stroke-linejoin="miter"><path class="mark-frame-nw" d="M8 22V8h14"/><path class="mark-frame-ne" d="M42 8h14v14"/><path class="mark-frame-se" d="M56 42v14H42"/><path class="mark-frame-sw" d="M22 56H8V42"/></g><path class="mark-core" fill="currentColor" fill-rule="evenodd" d="M19 44 29.3 19h5.4L45 44h-7.2l-2-5.6h-7.6L26.2 44H19Zm11.4-11.8h3.2L32 27.4l-1.6 4.8Z"/><rect class="mark-accent" x="52.5" y="4.5" width="7" height="7" fill="#61766a"/></svg><strong>AI4S <em>Atlas</em></strong></a><p>Measure what matters.<br />Understand what comes next.</p></div><div class="footer-meta"><span id="footer-meta">科学 AI 评测与公开成绩 · 官方证据优先</span><a href="https://github.com/Sci-ultron/ai4s-evaluation-atlas" target="_blank" rel="noreferrer">维护与贡献 ↗</a><a href="#top">回到顶部 ↑</a></div><p class="footer-fineprint">成绩与目录均保留来源和版本；缺失信息明确标注。评测在参与者自己的环境执行，公开提交经审核后收录。目录分类为规则派生。</p><details class="branding-credits"><summary>图表与标识来源</summary><div id="brand-credits-body"></div></details></footer>
+    <footer class="footer shell"><div class="footer-brand"><a class="footer-signature" href="#top" data-app-view="benchmark" data-tbs-view="bars" aria-label="AI4S Atlas 首页"><svg class="brand-mark atlas-coordinate-mark" viewBox="0 0 64 64" fill="none" aria-hidden="true"><g class="mark-frame" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="square" stroke-linejoin="miter"><path class="mark-frame-nw" d="M8 22V8h14"/><path class="mark-frame-ne" d="M42 8h14v14"/><path class="mark-frame-se" d="M56 42v14H42"/><path class="mark-frame-sw" d="M22 56H8V42"/></g><path class="mark-core" fill="currentColor" fill-rule="evenodd" d="M19 44 29.3 19h5.4L45 44h-7.2l-2-5.6h-7.6L26.2 44H19Zm11.4-11.8h3.2L32 27.4l-1.6 4.8Z"/><rect class="mark-accent" x="52.5" y="4.5" width="7" height="7" fill="#61766a"/></svg><strong>AI4S <em>Atlas</em></strong></a><p>Measure what matters.<br />Understand what comes next.</p></div><div class="footer-meta"><span id="footer-meta">科学 AI 评测与公开成绩 · 官方证据优先</span><a href="https://github.com/Sci-ultron/ai4s-evaluation-atlas" target="_blank" rel="noreferrer">维护与贡献 ↗</a><a href="#top">回到顶部 ↑</a></div><p class="footer-fineprint">成绩与目录均保留来源和版本；缺失信息明确标注。评测在参与者自己的环境执行，公开提交经审核后收录。目录分类为规则派生。</p><details class="branding-credits"><summary>图表与标识来源</summary><div id="brand-credits-body"></div></details></footer>
     <div id="detail-drawer" class="drawer" aria-hidden="true"><div class="drawer-backdrop" data-close-drawer></div><aside class="drawer-panel"><div class="drawer-topline"><span>AI4S / BENCHMARK NOTES</span><button class="drawer-close" data-close-drawer aria-label="关闭详情">关闭 <span aria-hidden="true">×</span></button></div><div id="drawer-content"></div></aside></div>
-    <script src="app.js?v=4724e300783f" defer></script>
+    <script src="app.js?v=4540b79c3696" defer></script>
   </body>
 </html>

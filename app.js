@@ -331,7 +331,7 @@ function scoreVisualDifferenceMarkup(heatmap){
 }
 function scoreChartScopeMarkup(board){
   const source=board.source||{},date=board.score_date,updated=board.data_updated_at||source.data_updated_at,checked=board.retrieved_at||source.retrieved_at;
-  return `<div class="score-evidence-meta">${scoreChartSource(board)}<span>${esc(board.version||'版本见来源')}</span><span>${date?'成绩日期 '+esc(date):'逐项成绩日期未披露'}</span>${updated?`<span>源更新 ${esc(String(updated).slice(0,10))}</span>`:''}${checked?`<span>本站核对 ${esc(String(checked).slice(0,10))}</span>`:''}</div><details class="score-protocol"><summary>评测条件与可比范围</summary><p>${esc(board.protocol||source.protocol||'完整协议请核对原始来源。')}</p>${board.metric_note?`<p>${esc(board.metric_note)}</p>`:''}</details>`;
+  return `<details class="score-protocol"><summary>协议与来源 <span aria-hidden="true">＋</span></summary><div class="score-protocol-body"><div class="score-evidence-meta">${scoreChartSource(board)}<span>${esc(board.version||'版本见来源')}</span><span>${date?'成绩日期 '+esc(date):'逐项成绩日期未披露'}</span>${updated?`<span>源更新 ${esc(String(updated).slice(0,10))}</span>`:''}${checked?`<span>本站核对 ${esc(String(checked).slice(0,10))}</span>`:''}</div><p>${esc(board.protocol||source.protocol||'完整协议请核对原始来源。')}</p>${board.metric_note?`<p>${esc(board.metric_note)}</p>`:''}</div></details>`;
 }
 // Terminal-Bench-Science: source-reported subject and task results, kept in one protocol.
 const TBS_DOMAIN_LABELS={life:'生命科学',physical:'物理科学',earth:'地球科学',mathematical:'数学科学',engineering:'工程科学'};
@@ -411,7 +411,8 @@ function renderScoreVisuals(){
   if(!tbs&&scoreVisualState.tab==='tasks')scoreVisualState.tab='heatmap';
   const tabs=tbs?[['bars','成绩排行'],['heatmap','5 学科热图'],['tasks','70 任务热图'],['difference','两配置差值']]:[['bars','成绩排行'],['heatmap','跨基准热力'],['difference','两模型差值']];
   const panel=tbs&&scoreVisualState.tab==='heatmap'?scoreVisualTbsDomainsMarkup(board,hubFilteredRows(),hubState):tbs&&scoreVisualState.tab==='tasks'?scoreVisualTbsTasksMarkup(board,hubFilteredRows(),hubState):tbs&&scoreVisualState.tab==='difference'?scoreVisualTbsDifferenceMarkup(board,hubFilteredRows(),hubState):scoreVisualState.tab==='heatmap'?scoreVisualHeatmapMarkup(heatmap,hubState):scoreVisualState.tab==='difference'?scoreVisualDifferenceMarkup(heatmap):scoreVisualBarMarkup(board,hubFilteredRows());
-  root.innerHTML=`<div class="score-visual-heading"><div><p class="eyebrow">MODEL SCORES / COMPARE THE EVIDENCE</p><h2>用图表，读懂分数与差异。</h2></div><a href="#hub-raw-results">查看精确成绩表 ↓</a></div>${scoreChartScopeMarkup(board)}<div class="score-chart-tabs" role="group" aria-label="成绩图表类型">${tabs.map(([id,name])=>`<button data-score-tab="${id}" aria-pressed="${id===scoreVisualState.tab}">${name}</button>`).join('')}</div><div class="score-chart-panel">${panel}</div>`;
+  root.innerHTML=`<div class="score-visual-heading benchmark-chart-heading"><div><h2>${esc(board.name)}</h2><span>${esc(board.metric)} · ${esc(board.unit||'原生刻度')}</span></div><a href="#hub-raw-results">LEADERBOARD ↓</a></div><div class="score-chart-control-bar"><div class="score-chart-tabs" role="group" aria-label="成绩图表类型">${tabs.map(([id,name])=>`<button data-score-tab="${id}" aria-pressed="${id===scoreVisualState.tab}">${name}</button>`).join('')}</div>${scoreChartScopeMarkup(board)}</div><div class="provider-rail" data-provider-strip aria-label="按模型公司浏览"></div><div class="score-chart-panel">${panel}</div>`;
+  paintProviderRail(root);
   if(root.dataset?.scoreVisualBound||typeof root.addEventListener!=='function')return;
   if(root.dataset)root.dataset.scoreVisualBound='true';
   root.addEventListener('click',event=>{
@@ -564,6 +565,7 @@ function paintHubResults(root) {
   if(comparison)comparison.innerHTML=hubComparisonMarkup();
   const notice=root.querySelector('[data-hub-notice]');
   if(notice)notice.textContent=hubState.notice;
+  paintBenchmarkOverview(board);
   renderScoreVisuals();
 }
 function hubCsv(rows) {
@@ -594,7 +596,7 @@ function renderEvaluationHub() {
   if(!hubModel.boards.some(board=>board.id===hubState.board))hubState.board=hubPreferredBoardId(hubModel,data);
   const current=hubCurrentBoard();if(current)hubState.assessment=current.assessment;
   const featured=hubModel.boards.find(board=>board.id==='frontier::terminal-bench-science-official'), independent=hubModel.boards.find(board=>board.id==='frontier::terminal-bench-science-aa'), biology=hubModel.boards.find(board=>board.id==='bio-v1-spatialbench');
-  root.innerHTML=`<div class="hub-stats"><div><strong>${fmt(reported.length)}</strong><span>已报告单项成绩</span></div><div><strong>${fmt(configurations.size)}</strong><span>来源内模型 × 框架配置</span></div><div><strong>${fmt(hubModel.boards.length)}</strong><span>独立成绩表</span></div><p>真实来源，逐项阅读。<br>选择评测，再看模型表现。</p></div><div class="hub-toolbar"><div class="hub-assessment" role="group" aria-label="选择评测类别"><button data-hub-assessment="capabilities" aria-pressed="${hubState.assessment==='capabilities'}">科学能力</button><button data-hub-assessment="safeguards" aria-pressed="${hubState.assessment==='safeguards'}">安全与拒答</button></div><div class="hub-quick">快速查看 ${featured?`<button data-hub-board="${esc(featured.id)}">TB-Science 官方 ↗</button>`:''}${independent?`<button data-hub-board="${esc(independent.id)}">AA 独立复测 ↗</button>`:''}${biology?`<button data-hub-board="${esc(biology.id)}">生物 Agent ↗</button>`:''}</div></div><div class="provider-rail" data-provider-strip aria-label="按模型公司浏览"></div><div class="hub-filters"><label class="hub-benchmark-filter">评测与协议<select data-hub-field="board" aria-label="选择成绩基准"></select></label><label>模型 / 公司<input data-hub-field="query" type="search" placeholder="例如 OpenAI、Claude、DeepSeek" value="${esc(hubState.query)}" autocomplete="off" /></label><label>运行框架<select data-hub-field="harness" aria-label="筛选运行框架"></select></label><label>排序<select data-hub-field="sort" aria-label="成绩排序">${hubOptions([['score-desc','成绩从高到低'],['score-asc','成绩从低到高'],['model','模型名称']],hubState.sort)}</select></label></div><div class="hub-result-line"><p data-hub-count role="status"></p><div aria-label="当前基准成绩表导出"><span class="hub-export-scope">当前基准导出</span><button data-hub-export="csv">CSV ↓</button><button data-hub-export="json">JSON ↓</button><button data-hub-reset>重置 ↺</button></div></div><section id="score-visuals-app" aria-label="模型成绩图表"></section><div id="hub-raw-results" data-hub-output></div><p class="hub-notice" data-hub-notice role="status" aria-live="polite"></p><section class="hub-comparison" data-hub-comparison aria-label="模型配置对比"></section>`;
+  root.innerHTML=`<div class="hub-stats"><div><strong>${fmt(reported.length)}</strong><span>已报告单项成绩</span></div><div><strong>${fmt(configurations.size)}</strong><span>来源内模型 × 框架配置</span></div><div><strong>${fmt(hubModel.boards.length)}</strong><span>独立成绩表</span></div><p>真实来源，逐项阅读。<br>选择评测，再看模型表现。</p></div><section id="score-visuals-app" aria-label="模型成绩图表"></section><div class="hub-toolbar"><div class="hub-assessment" role="group" aria-label="选择评测类别"><button data-hub-assessment="capabilities" aria-pressed="${hubState.assessment==='capabilities'}">科学能力</button><button data-hub-assessment="safeguards" aria-pressed="${hubState.assessment==='safeguards'}">安全与拒答</button></div><div class="hub-quick">快速查看 ${featured?`<button data-hub-board="${esc(featured.id)}">TB-Science 官方 ↗</button>`:''}${independent?`<button data-hub-board="${esc(independent.id)}">AA 独立复测 ↗</button>`:''}${biology?`<button data-hub-board="${esc(biology.id)}">生物 Agent ↗</button>`:''}</div></div><div class="hub-filters"><label class="hub-benchmark-filter">评测与协议<select data-hub-field="board" aria-label="选择成绩基准"></select></label><label>模型 / 公司<input data-hub-field="query" type="search" placeholder="例如 OpenAI、Claude、DeepSeek" value="${esc(hubState.query)}" autocomplete="off" /></label><label>运行框架<select data-hub-field="harness" aria-label="筛选运行框架"></select></label><label>排序<select data-hub-field="sort" aria-label="成绩排序">${hubOptions([['score-desc','成绩从高到低'],['score-asc','成绩从低到高'],['model','模型名称']],hubState.sort)}</select></label></div><div class="hub-result-line"><p data-hub-count role="status"></p><div aria-label="当前基准成绩表导出"><span class="hub-export-scope">当前基准导出</span><button data-hub-export="csv">CSV ↓</button><button data-hub-export="json">JSON ↓</button><button data-hub-reset>重置 ↺</button></div></div><div id="hub-raw-results" data-hub-output></div><p class="hub-notice" data-hub-notice role="status" aria-live="polite"></p><section id="model-comparison" class="hub-comparison" data-hub-comparison aria-label="模型配置对比"></section>`;
   // The deployment contract's lightweight DOM checks only read the initial markup.
   if(typeof root.querySelector!=='function')return;
   syncHubControls(root);paintHubResults(root);
@@ -643,20 +645,22 @@ function renderEvaluationHub() {
 }
 
 function openResultsForBenchmark(benchmarkId) {
+  showAtlasView('benchmark');
   const board=hubModel.boards.find(board=>board.benchmark_id===benchmarkId||board.id===benchmarkId);
   if(!board)return false;
   hubState.board=board.id;hubState.assessment=board.assessment;hubState.query='';hubState.harness='';
   renderEvaluationHub();
-  document.querySelector('#results')?.scrollIntoView({behavior:'smooth',block:'start'});
+  document.querySelector('#results')?.scrollIntoView({behavior:'auto',block:'start'});
   return true;
 }
 function openTbsView(tab='bars') {
+  showAtlasView('benchmark');
   const board=hubModel.boards.find(board=>board.id==='frontier::terminal-bench-science-official');
   if(!board)return false;
   hubState.board=board.id;hubState.assessment=board.assessment;hubState.query='';hubState.harness='';hubState.sort='score-desc';
   scoreVisualState.tab=tab==='tasks'?'tasks':'bars';
   renderEvaluationHub();
-  document.querySelector(tab==='tasks'?'#score-visuals-app':'#results')?.scrollIntoView({behavior:'smooth',block:'start'});
+  document.querySelector(tab==='tasks'?'#score-visuals-app':'#results')?.scrollIntoView({behavior:'auto',block:'start'});
   return true;
 }
 function evaluationResultCount(benchmarkId) {
@@ -727,7 +731,7 @@ function setView(view){
   $('view-grid').setAttribute('aria-pressed',String(!isList));
   $('view-list').setAttribute('aria-pressed',String(isList));
 }
-function scrollToResults(){$('results-scroll').scrollIntoView({block:'start'})}
+function scrollToResults(){showAtlasView('catalog');$('results-scroll').scrollIntoView({block:'start'})}
 function section(title,content){return `<section class="detail-section"><h3>${esc(title)}</h3>${content}</section>`}
 function formatSize(value){if(value===null||value===undefined||value==='')return '规模未在上游明确';if(typeof value==='object')return Object.entries(value).map(([k,v])=>`${k}: ${v}`).join(' · ');return String(value)}
 function outputShape(b){const example=scenarioExample(b);return example.kind==='task_overview'?example.output:'输出格式待逐条核实'}
@@ -817,10 +821,11 @@ function selectEvaluationBenchmark(id){
   renderEvaluationChoices();renderEvaluationSelection();
 }
 function openEvaluationBenchmark(id){
+  showAtlasView('evaluate');
   if(!list(data?.benchmarks).some(b=>b.id===id))return false;
   const container=$('evaluate-app');
   if(typeof container.querySelector==='function')selectEvaluationBenchmark(id);else evaluationPlanState.selectedId=id;
-  (container.closest?.('section')||container).scrollIntoView?.({behavior:'smooth',block:'start'});
+  (container.closest?.('section')||container).scrollIntoView?.({behavior:'auto',block:'start'});
   return true;
 }
 function renderEvaluationSubmission(rows){
@@ -857,7 +862,90 @@ function renderEvaluationWorkspace(){
   });
 }
 
-async function init(){try{const response=await fetch('catalog.json',{cache:'no-cache'});if(!response.ok)throw Error(`HTTP ${response.status}`);data=await response.json();data.benchmarks.forEach(b=>b._search=[b.name,b.id,b.description,b.subdomain,label(b.domain),label(b.classification.domain_family),b.paper.title,...b.task_types,...b.modalities,...b.classification.capability_axes.map(label),...b.organizations.map(o=>o.organization),...(b.major_company_published_by||[]),...(b.major_company_evaluated_by||[]),...(b.major_company_published_labels||[]),...(b.major_company_evaluated_labels||[]),b.major_company_status?.label||''].join(' ').toLowerCase());$('hero-count').textContent=fmt(data.benchmark_count);$('hero-domains').textContent=Object.keys(data.facets.domain).length;$('hero-suites').textContent=data.suite_count;$('hero-orgs').textContent=data.organization_count;$('sync-status').textContent=`更新 ${data.generated_at}`;$('footer-meta').textContent=`${fmt(data.benchmark_count)} 条 · ${data.generated_at} · 公开成绩与评测入口`;const runners=data.benchmarks.filter(x=>x.integration.runner).length,linked=data.benchmarks.filter(x=>x.organizations.length).length,questioned=data.taxonomy?.question_count?.known_benchmark_count||0,major=data.taxonomy?.major_company||{};$('kpi-row').innerHTML=[[runners,'含调用入口'],[linked,'有机构证据'],[data.relationship_count,'发布/评测关系'],[questioned,'已提取规模数量'],[major.role_counts?.released_by||0,'公司发布/联合发布'],[major.role_counts?.official_evaluation||0,'公司官方报告使用']].map(([v,l])=>`<div class="kpi"><strong>${fmt(v)}</strong><span>${l}</span></div>`).join('');fillSelect('company-filter',(data.taxonomy?.major_company?.families||[]).map(x=>x.company));fillSelect('domain-filter',Object.keys(data.facets.domain));fillSelect('family-filter',Object.keys(data.facets.capability_axes));fillSelect('mode-filter',Object.keys(data.facets.evaluation_modes));fillSelect('access-filter',Object.keys(data.facets.data_access));fillSelect('year-filter',[...new Set(data.benchmarks.map(x=>x.year).filter(Boolean))].sort((a,b)=>b-a));renderBars('capability-bars',data.facets.capability_axes,'capability_axes');renderBars('workflow-bars',data.facets.workflow_stages,'workflow_stages');renderBars('evidence-bars',data.facets.evidence_tier,'evidence_tier');renderTaxonomy();renderFrontier();renderEvaluationHub();renderEvaluationWorkspace();$('suite-list').innerHTML=data.suites.filter(s=>['core-science-v1','chemistry-v1','biology-medicine-v1','research-agent-v1','scientific-literature-v1','scientific-ml-v1'].includes(s.id)).map(s=>`<article class="suite-card"><p class="eyebrow">${s.benchmarks.length} BENCHMARKS</p><h3>${esc(s.name)}</h3><p>${esc(s.description)}</p><button data-suite="${esc(s.id)}">查看套件 →</button></article>`).join('');applyFilters()}catch(error){$('sync-status').textContent='目录加载失败';$('benchmark-list').innerHTML='<div class="empty-state">目录暂时无法读取。请使用本地 HTTP 服务打开网站，并确认 catalog.json 已生成。</div>';console.error(error)}}
+// The benchmark detail is the default reading view. Navigation preserves each
+// existing workspace and never changes the source-backed score/configuration keys.
+let atlasActiveView='benchmark';
+let atlasContextCategory='science';
+const atlasViewAnchors={benchmark:'top',catalog:'catalog',evaluate:'evaluate',frontier:'frontier',insights:'evidence'};
+function atlasViewForAnchor(anchor){
+  if(['catalog','suites','results-scroll'].includes(anchor))return 'catalog';
+  if(anchor==='evaluate')return 'evaluate';
+  if(anchor.startsWith('frontier'))return 'frontier';
+  if(['evidence','insights','capability-title','taxonomy-title'].includes(anchor))return 'insights';
+  return 'benchmark';
+}
+function showAtlasView(view='benchmark',anchor='',push=true){
+  if(!Object.hasOwn(atlasViewAnchors,view))view='benchmark';
+  atlasActiveView=view;
+  setAtlasMenu(false);
+  for(const section of document.querySelectorAll('section[data-atlas-view]'))section.hidden=section.dataset.atlasView!==view;
+  document.documentElement?.setAttribute?.('data-atlas-view',view);
+  for(const link of document.querySelectorAll('[data-app-view]')){
+    const comparison=anchor==='model-comparison';
+    const active=link.dataset.appView===view&&(view!=='benchmark'||(link.getAttribute('href')==='#model-comparison'?comparison:!comparison));
+    if(active)link.setAttribute('aria-current','page');else link.removeAttribute?.('aria-current');
+  }
+  const target=anchor||atlasViewAnchors[view];
+  if(push&&typeof window!=='undefined'&&window.history?.pushState){
+    const hash='#'+target;if(window.location?.hash!==hash)window.history.pushState(null,'',hash);
+  }
+  if(anchor)document.getElementById(target)?.scrollIntoView?.({block:'start'});
+  return view;
+}
+function atlasCategoryBoards(category=atlasContextCategory){
+  return hubModel.boards.filter(board=>category==='science'||category==='biology'&&board.id.startsWith('bio-v1-')||category==='physics'&&board.id==='frontier::physcount-independent-4096'||category==='agents'&&board.id.startsWith('frontier::')&&board.id!=='frontier::physcount-independent-4096');
+}
+function setAtlasMenu(open){
+  const button=$('nav-menu-toggle');if(!button)return;
+  button.setAttribute('aria-expanded',String(open));
+  button.setAttribute('aria-label',open?'关闭导航菜单':'打开导航菜单');
+  document.querySelector('.site-header')?.setAttribute?.('data-menu-open',String(open));
+}
+function syncBenchmarkContext(board){
+  if(!atlasCategoryBoards().some(item=>item.id===board?.id))atlasContextCategory='science';
+  const category=$('benchmark-domain-select');if(category)category.value=atlasContextCategory;
+  const select=$('benchmark-context-select');
+  if(select){select.innerHTML=atlasCategoryBoards().map(item=>`<option value="${esc(item.id)}"${item.id===board?.id?' selected':''}>${esc(item.name)}</option>`).join('');select.value=board?.id||''}
+}
+function paintBenchmarkOverview(board){
+  if(!board||!$('benchmark-title'))return;
+  const benchmark=list(data?.benchmarks).find(item=>item.id===board.benchmark_id);
+  const tbs=board.benchmark_id==='terminal-bench-science-scientific-agent-benchmark';
+  const official=board.id==='frontier::terminal-bench-science-official';
+  const domain=benchmark?.domain||board.domain||'Science';
+  const retrieved=String(board.retrieved_at||'').slice(0,10),updated=String(board.data_updated_at||'').slice(0,10);
+  $('benchmark-title').textContent=tbs?'Terminal-Bench-Science':board.name;
+  $('benchmark-breadcrumb-domain').textContent=label(domain).toUpperCase();
+  $('benchmark-kind').innerHTML=`<i aria-hidden="true"></i>${official?'ACADEMIC · OFFICIAL':board.assessment==='safeguards'?'SAFEGUARDS':board.id.endsWith('-aa')?'INDEPENDENT · AA':'REPORTED RESULTS'}`;
+  $('benchmark-updated').textContent=`本站核对 ${retrieved||'未披露'}${updated?' · 源更新 '+updated:''}`;
+  $('benchmark-version').textContent=official?'v0.1.0 · 70 TASKS':board.version||'版本见来源';
+  const source=$('benchmark-source-link');source.href=safeUrl(board.source_url||board.source?.url)||'#benchmark-methodology';
+  const run=$('benchmark-run-link');
+  if(benchmark){run.hidden=false;run.setAttribute('data-eval-start',benchmark.id)}else run.hidden=true;
+  $('benchmark-description').textContent=tbs?'由科学家贡献的真实科研工作流，覆盖五个科学领域。':board.assessment==='safeguards'?'安全与拒答单列，连同模型和运行框架一起阅读。':'逐项查看模型表现，保留每个评测自己的指标与运行协议。';
+  const leaders=hubModel.rows.filter(row=>row.board_id===board.id&&row.score!==null).sort((a,b)=>b.score-a.score).slice(0,3);
+  $('benchmark-summary').innerHTML=leaders.length?`${esc(retrieved?'截至 '+retrieved+' 本站核对，':'当前来源报告，')}${leaders.map(row=>`<span class="benchmark-leader">${brandBadge(row.model)} <span class="benchmark-harness">(${esc(hubHarnessLabel(row))})</span> <strong>${esc(hubScore(row))}</strong></span>`).join('；')}。<span class="benchmark-summary-note">同一来源内比较；本站未复测。</span>`:'此来源尚无已核实的数值成绩。';
+  $('benchmark-background').textContent=tbs?'Terminal-Bench-Science 是面向科研 Agent 的科学终端工作流评测。正式 v0.1.0 包含 70 项专家贡献任务，覆盖生命、物理、数学、工程和地球科学；任务产物由各任务的 verifier 检验。开发分支的增长与正式计分版本分别记录。':benchmark?.description||`${board.name} 按来源发布的任务范围和运行协议报告成绩。不同基准、版本及来源的结果分表阅读。`;
+  $('benchmark-protocol').textContent=board.protocol||board.source?.protocol||'来源尚未披露完整运行协议，请沿原始来源核对。';
+  $('benchmark-scoring').textContent=(board.metric_note||`${board.metric}，单位 ${board.unit||'原生刻度'}。`)+ ' 未报告保持未知，真实 0 分保留；源更新和本站核对日期均不等于逐项运行日期。';
+  const scope=$('benchmark-domain-scope');scope.hidden=!isTbsOfficialBoard(board);
+  $('benchmark-domain-counts').innerHTML=isTbsOfficialBoard(board)?`<table><thead><tr><th>Scientific domain</th><th>Tasks</th></tr></thead><tbody>${Object.entries(TBS_DOMAIN_LABELS).map(([key,name])=>`<tr><th scope="row">${esc(name)}</th><td>${board.task_matrix.tasks.filter(task=>task.domain===key).length}</td></tr>`).join('')}</tbody></table>`:'';
+  $('benchmark-related-links').innerHTML=hubModel.boards.filter(item=>item.id!==board.id&&item.assessment===board.assessment).slice(0,6).map(item=>`<button type="button" data-benchmark-board="${esc(item.id)}">${esc(item.name)} <span aria-hidden="true">↗</span></button>`).join('');
+  const status=$('context-status');if(status)status.textContent=board.assessment==='safeguards'?'SAFEGUARDS / SOURCE BY SOURCE':'SCIENTIFIC AI / SOURCE BY SOURCE';
+  syncBenchmarkContext(board);
+}
+function initializeAtlasNavigation(){
+  const menu=$('nav-menu-toggle');menu?.addEventListener('click',()=>setAtlasMenu(menu.getAttribute('aria-expanded')!=='true'));
+  $('benchmark-domain-select')?.addEventListener('change',event=>{atlasContextCategory=event.target.value;const first=atlasCategoryBoards()[0];if(first)openResultsForBenchmark(first.id);else syncBenchmarkContext(hubCurrentBoard())});
+  const select=$('benchmark-context-select');
+  select?.addEventListener('change',event=>openResultsForBenchmark(event.target.value));
+  if(typeof window!=='undefined'&&typeof window.addEventListener==='function'){
+    const restore=()=>{const anchor=(window.location?.hash||'').replace(/^#/,'');showAtlasView(atlasViewForAnchor(anchor),anchor,false)};
+    window.addEventListener('hashchange',restore);window.addEventListener('popstate',restore);restore();
+  }else showAtlasView('benchmark','',false);
+}
+
+async function init(){try{const response=await fetch('catalog.json',{cache:'no-cache'});if(!response.ok)throw Error(`HTTP ${response.status}`);data=await response.json();data.benchmarks.forEach(b=>b._search=[b.name,b.id,b.description,b.subdomain,label(b.domain),label(b.classification.domain_family),b.paper.title,...b.task_types,...b.modalities,...b.classification.capability_axes.map(label),...b.organizations.map(o=>o.organization),...(b.major_company_published_by||[]),...(b.major_company_evaluated_by||[]),...(b.major_company_published_labels||[]),...(b.major_company_evaluated_labels||[]),b.major_company_status?.label||''].join(' ').toLowerCase());$('hero-count').textContent=fmt(data.benchmark_count);$('hero-domains').textContent=Object.keys(data.facets.domain).length;$('hero-suites').textContent=data.suite_count;$('hero-orgs').textContent=data.organization_count;$('sync-status').textContent=`更新 ${data.generated_at}`;$('footer-meta').textContent=`${fmt(data.benchmark_count)} 条 · ${data.generated_at} · 公开成绩与评测入口`;const runners=data.benchmarks.filter(x=>x.integration.runner).length,linked=data.benchmarks.filter(x=>x.organizations.length).length,questioned=data.taxonomy?.question_count?.known_benchmark_count||0,major=data.taxonomy?.major_company||{};$('kpi-row').innerHTML=[[runners,'含调用入口'],[linked,'有机构证据'],[data.relationship_count,'发布/评测关系'],[questioned,'已提取规模数量'],[major.role_counts?.released_by||0,'公司发布/联合发布'],[major.role_counts?.official_evaluation||0,'公司官方报告使用']].map(([v,l])=>`<div class="kpi"><strong>${fmt(v)}</strong><span>${l}</span></div>`).join('');fillSelect('company-filter',(data.taxonomy?.major_company?.families||[]).map(x=>x.company));fillSelect('domain-filter',Object.keys(data.facets.domain));fillSelect('family-filter',Object.keys(data.facets.capability_axes));fillSelect('mode-filter',Object.keys(data.facets.evaluation_modes));fillSelect('access-filter',Object.keys(data.facets.data_access));fillSelect('year-filter',[...new Set(data.benchmarks.map(x=>x.year).filter(Boolean))].sort((a,b)=>b-a));renderBars('capability-bars',data.facets.capability_axes,'capability_axes');renderBars('workflow-bars',data.facets.workflow_stages,'workflow_stages');renderBars('evidence-bars',data.facets.evidence_tier,'evidence_tier');renderTaxonomy();renderFrontier();renderEvaluationHub();renderEvaluationWorkspace();$('suite-list').innerHTML=data.suites.filter(s=>['core-science-v1','chemistry-v1','biology-medicine-v1','research-agent-v1','scientific-literature-v1','scientific-ml-v1'].includes(s.id)).map(s=>`<article class="suite-card"><p class="eyebrow">${s.benchmarks.length} BENCHMARKS</p><h3>${esc(s.name)}</h3><p>${esc(s.description)}</p><button data-suite="${esc(s.id)}">查看套件 →</button></article>`).join('');applyFilters();if(typeof window!=='undefined'){const anchor=(window.location?.hash||'').replace(/^#/,'');showAtlasView(atlasViewForAnchor(anchor),anchor,false)}}catch(error){$('sync-status').textContent='目录加载失败';$('benchmark-list').innerHTML='<div class="empty-state">目录暂时无法读取。请使用本地 HTTP 服务打开网站，并确认 catalog.json 已生成。</div>';console.error(error)}}
 for(const id of ['search','domain-filter','family-filter','mode-filter','access-filter','year-filter','company-filter','industry-filter','sort-filter'])$(id).addEventListener(id==='search'?'input':'change',applyFilters);
 $('reset-filters').addEventListener('click',reset);
 $('view-grid').addEventListener('click',()=>setView('grid'));
@@ -870,6 +958,10 @@ $('filter-toggle').addEventListener('click',()=>{
 $('prev-page').addEventListener('click',()=>{if(page<=1)return;page--;renderResults();scrollToResults()});
 $('next-page').addEventListener('click',()=>{if(page>=Math.ceil(filtered.length/pageSize))return;page++;renderResults();scrollToResults()});
 document.addEventListener('click',e=>{
+  const appLink=e.target.closest('[data-app-view]');
+  if(appLink){e.preventDefault?.();if(appLink.dataset.tbsView)openTbsView(appLink.dataset.tbsView);const anchor=(appLink.getAttribute('href')||'').replace(/^#/,'');showAtlasView(appLink.dataset.appView,anchor);return}
+  const related=e.target.closest('[data-benchmark-board]');
+  if(related){openResultsForBenchmark(related.dataset.benchmarkBoard);return}
   const tbsTarget=e.target.closest('[data-tbs-view]');
   if(tbsTarget&&openTbsView(tbsTarget.dataset.tbsView))e.preventDefault?.();
   const evaluateTarget=e.target.closest('[data-eval-start]'),resultsTarget=e.target.closest('[data-results-benchmark]');
@@ -907,10 +999,11 @@ document.addEventListener('click',e=>{
   if(suite){clearFilterValues();selectedSuite=data.suites.find(s=>s.id===suite.dataset.suite);applyFilters();scrollToResults()}
 });
 document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'&&$('nav-menu-toggle')?.getAttribute('aria-expanded')==='true'){e.preventDefault?.();setAtlasMenu(false);$('nav-menu-toggle').focus();return}
   const drawerOpen=$('detail-drawer').classList.contains('open');
   const typingTarget=e.target?.closest('input,select,textarea,[contenteditable]:not([contenteditable="false"])');
   if(e.key==='/'&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&!e.shiftKey&&!drawerOpen&&!typingTarget){
-    e.preventDefault();$('search').focus();return;
+    e.preventDefault();showAtlasView('catalog');$('search').focus();return;
   }
   if(!drawerOpen)return;
   if(e.key==='Escape')closeDetail();
@@ -973,4 +1066,5 @@ renderBrandCredits();
 initializeCompanyMentions();
 initializeAtlasMotion();
 setView('grid');
+initializeAtlasNavigation();
 init();
