@@ -1325,3 +1325,6 @@ html:has(body.vals-layout) { scroll-behavior: auto; }
 @media (max-width:800px) {
   .vals-layout .quick-domains { max-width:100%; margin-inline:0; }
 }
+
+/* Keep full native confidence bounds readable within every score column. */
+.vals-layout .score-bar-value small.score-confidence-interval { white-space: normal; overflow-wrap: anywhere; }

@@ -234,8 +234,19 @@ function scoreChartUncertainty(row,board){
   const error=list(row?.secondary).find(item=>/标准误|standard\s*error|^sem$|^se$/i.test(item.label||'')&&typeof item.value==='number'&&Number.isFinite(item.value)&&item.value>=0&&(unit==='%'?['%','百分点'].includes(item.unit):(item.unit||'')===unit));
   return error?{value:error.value,unit:unit==='%'?'百分点':unit||'原生分值',decimals:error.decimals??2}:null;
 }
+function scoreChartInterval(row,board){
+  const interval=row?.confidence_interval;
+  if(!interval||row?.score==null||row.unit!==board?.unit||![interval.lower,interval.upper,interval.level].every(value=>typeof value==='number'&&Number.isFinite(value))||interval.lower>row.score||interval.upper<row.score||interval.level<=0||interval.level>=1||typeof interval.method!=='string'||!interval.method.trim())return null;
+  return interval;
+}
+function hubIntervalLabel(row){
+  const interval=row?.confidence_interval;
+  if(!interval)return '';
+  const fmt=value=>hubScore({score:value,unit:'',decimals:row.decimals},false);
+  return `${(100*interval.level).toLocaleString('en-US',{maximumFractionDigits:2})}% ${interval.method} CI [${fmt(interval.lower)}, ${fmt(interval.upper)}]`;
+}
 function chartDomain(board,rows){
-  const numbers=rows.flatMap(row=>{if(typeof row.score!=='number'||!Number.isFinite(row.score))return [];const error=scoreChartUncertainty(row,board);return error?[row.score,row.score-error.value,row.score+error.value]:[row.score]});
+  const numbers=rows.flatMap(row=>{if(typeof row.score!=='number'||!Number.isFinite(row.score))return [];const interval=scoreChartInterval(row,board),error=scoreChartUncertainty(row,board);return interval?[row.score,interval.lower,interval.upper]:error?[row.score,row.score-error.value,row.score+error.value]:[row.score]});
   const min=Math.min(0,...numbers),observed=Math.max(0,...numbers);
   const max=board?.unit==='%'?Math.max(100,Math.ceil(observed/25)*25):Math.max(1,observed);
   return {min,max,unit:board?.unit||'',ticks:Array.from({length:5},(_,i)=>min+(max-min)*i/4)};
@@ -293,11 +304,12 @@ function scoreVisualBarMarkup(board,rows){
   const ticks=domain.ticks.map(tick=>`<span style="left:${100*(tick-domain.min)/range}%">${esc(scoreChartTick(tick))}</span>`).join('');
   const bars=visible.map(row=>{
     const numeric=typeof row.score==='number'&&Number.isFinite(row.score),position=numeric?100*(row.score-domain.min)/range:zero,error=numeric?scoreChartUncertainty(row,board):null;
-    const uncertainty=error?`<span class="score-error-line" style="left:${100*(row.score-error.value-domain.min)/range}%;width:${200*error.value/range}%" aria-hidden="true"></span>`:'';
-    const errorLabel=error?`<small>± ${esc(error.value.toLocaleString('en-US',{maximumFractionDigits:error.decimals}))} 标准误<br>(${esc(error.unit)})</small>`:'';
-    return `<div class="score-bar-row" role="listitem"><div class="score-bar-label">${scoreChartText(row.model)}<small>${esc(hubHarnessLabel(row))}</small>${hubRowEvidenceMarkup(row)}</div><div class="score-bar-track${numeric?'':' is-missing'}"><i class="score-zero-line" style="left:${zero}%"></i>${numeric?`<span class="score-bar-mark${row.score===0?' is-zero':''}" style="left:${Math.min(zero,position)}%;width:${Math.abs(position-zero)}%"></span>${uncertainty}`:'<span class="score-null-label">未报告</span>'}</div><strong class="score-bar-value">${esc(hubScore(row))}${errorLabel}</strong></div>`;
+    const interval=numeric?scoreChartInterval(row,board):null;
+    const uncertainty=interval?`<span class="score-error-line" style="left:${100*(interval.lower-domain.min)/range}%;width:${100*(interval.upper-interval.lower)/range}%" aria-hidden="true"></span>`:error?`<span class="score-error-line" style="left:${100*(row.score-error.value-domain.min)/range}%;width:${200*error.value/range}%" aria-hidden="true"></span>`:'';
+    const errorLabel=interval?`<small class="score-confidence-interval">${esc(hubIntervalLabel(row))}</small>`:error?`<small>± ${esc(error.value.toLocaleString('en-US',{maximumFractionDigits:error.decimals}))} 标准误<br>(${esc(error.unit)})</small>`:'';
+    return `<div class="score-bar-row" role="listitem"><div class="score-bar-label">${scoreChartText(row.model)}<small>${esc(hubHarnessLabel(row))}</small>${hubRowEvidenceMarkup(row,false)}</div><div class="score-bar-track${numeric?'':' is-missing'}"><i class="score-zero-line" style="left:${zero}%"></i>${numeric?`<span class="score-bar-mark${row.score===0?' is-zero':''}" style="left:${Math.min(zero,position)}%;width:${Math.abs(position-zero)}%"></span>${uncertainty}`:'<span class="score-null-label">未报告</span>'}</div><strong class="score-bar-value">${esc(hubScore(row))}${errorLabel}</strong></div>`;
   }).join('');
-  return `<figure class="score-figure"><figcaption><h3>${esc(board.name)} · 模型成绩</h3><p>${esc(board.metric)}${board.unit?' · '+esc(board.unit):' · 原生刻度'}。按当前筛选与排序显示模型和运行框架。</p></figcaption><div class="score-bar-axis"><div>${ticks}</div><span>${esc(board.unit||'原生分值')}</span></div><div class="score-bars" role="list" aria-label="当前评测的公开成绩条形图">${bars||'<p class="score-chart-empty">当前筛选没有配置。</p>'}</div>${rows.length>12?`<button class="score-chart-more" data-score-action="bars">${scoreVisualState.allBars?'收起为 12 个配置':'显示全部 '+rows.length+' 个配置'} ↕</button>`:''}<p class="score-chart-note">刻度从 ${esc(scoreChartTick(domain.min))} 到 ${esc(scoreChartTick(domain.max))}${board.unit==='%'?'%':''}；— 表示未报告，0 为真实成绩。${rows.some(row=>scoreChartUncertainty(row,board))?'误差线保留来源报告的 ±1 标准误，不是置信区间。':''}仅比较此表的版本和运行协议。${scoreChartSource(board)}</p></figure>`;
+  return `<figure class="score-figure"><figcaption><h3>${esc(board.name)} · 模型成绩</h3><p>${esc(board.metric)}${board.unit?' · '+esc(board.unit):' · 原生刻度'}。按当前筛选与排序显示模型和运行框架。</p></figcaption><div class="score-bar-axis"><div>${ticks}</div><span>${esc(board.unit||'原生分值')}</span></div><div class="score-bars" role="list" aria-label="当前评测的公开成绩条形图">${bars||'<p class="score-chart-empty">当前筛选没有配置。</p>'}</div>${rows.length>12?`<button class="score-chart-more" data-score-action="bars">${scoreVisualState.allBars?'收起为 12 个配置':'显示全部 '+rows.length+' 个配置'} ↕</button>`:''}<p class="score-chart-note">刻度从 ${esc(scoreChartTick(domain.min))} 到 ${esc(scoreChartTick(domain.max))}${board.unit==='%'?'%':''}；— 表示未报告，0 为真实成绩。${rows.some(row=>scoreChartInterval(row,board))?'区间类型、置信水平和重采样方法保留来源披露，不作为标准误。':rows.some(row=>scoreChartUncertainty(row,board))?'误差线保留来源报告的 ±1 标准误，不是置信区间。':''}仅比较此表的版本和运行协议。${scoreChartSource(board)}</p></figure>`;
 }
 function scoreVisualHeatmapMarkup(heatmap,state){
   let configurations=heatmap.configurations;
@@ -465,6 +477,7 @@ function buildEvaluationHub(catalog) {
     list(board.rows).forEach((row,index)=>rows.push({id:id+'::'+(row.id||index),source_row_id:row.id,board_id:id,benchmark_id:board.benchmark_id,benchmark_name:board.name,configuration_id:row.id||row.system,configuration_label:row.system,
       model:row.model||row.system,provider:row.provider||'原报告未单列',harness:row.agent||'原报告未单列',harness_provider:row.agent_provider,effort:row.reasoning_effort,
       domain_metrics:row.domain_metrics,trial_count:row.trial_count,passes:row.values?.passes,task_count:board.task_count,trials_per_task:board.trials_per_task,
+      evaluation_coverage:row.evaluation_coverage,confidence_interval:row.confidence_interval,
       score:typeof row.values?.[primary.key]==='number'&&Number.isFinite(row.values[primary.key])?row.values[primary.key]:null,
       metric:primary.label,unit:primary.unit,decimals:primary.decimals,version:board.version||board.name,assessment:'capabilities',source_id:'frontier::'+board.id,
       source_url:board.source?.url,score_date:row.run_date??null,run_date:row.run_date??null,reported_score_date:board.score_date??null,data_updated_at:board.source_updated_at,retrieved_at:row.retrieved_at||board.retrieved_at||catalog.frontier.reviewed_at,source_note:typeof row.source_note==='string'?row.source_note:'',protocol:board.protocol,
@@ -500,6 +513,8 @@ function hubSourceLink(url,text='原始来源') {
 }
 function hubCoverage(row) {
   if(Number.isInteger(row.task_count)&&Number.isInteger(row.trials_per_task)&&row.task_count*row.trials_per_task===row.trial_count)return `${row.task_count} 任务 × ${row.trials_per_task} 次试验`;
+  const evaluations=row.evaluation_coverage;
+  if(evaluations)return `${evaluations.observed}/${evaluations.total} ${evaluations.unit==='questions'?'题目覆盖':'计分任务'}`;
   const c=row.coverage;
   return c&&Number.isFinite(c.observed)&&Number.isFinite(c.total)?`${c.observed}/${c.total} 项套件覆盖`:'仅此公开报告';
 }
@@ -519,7 +534,7 @@ function hubRowDateMarkup(row){
   const checked=row.retrieved_at?String(row.retrieved_at).slice(0,10):'未披露';
   return `${hasRunDate?(row.run_date?`<small style="display:block">来源运行日期 ${esc(row.run_date)}</small>`:'<small style="display:block">运行日期未披露</small>'):''}${row.reported_score_date?`<small style="display:block">报告日期 ${esc(row.reported_score_date)}</small>`:''}${hasRunDate&&row.data_updated_at?`<small style="display:block">源更新 ${esc(String(row.data_updated_at).slice(0,10))}</small>`:''}${row.source_note?'':`<small style="display:block">上次核对 ${esc(checked)}</small>`}`;
 }
-function hubRowEvidenceMarkup(row){return hubRowSourceMarkup(row)+hubRowDateMarkup(row)}
+function hubRowEvidenceMarkup(row,includeInterval=true){return (includeInterval&&row?.confidence_interval?`<small style="display:block">${esc(hubIntervalLabel(row))}</small>`:'')+hubRowSourceMarkup(row)+hubRowDateMarkup(row)}
 
 function hubCurrentBoard() {return hubModel.boards.find(board=>board.id===hubState.board)}
 function syncHubControls(root) {
@@ -582,13 +597,13 @@ function paintHubResults(root) {
   renderScoreVisuals();
 }
 function hubCsv(rows) {
-  const headers=['benchmark','model','provider','harness','score','metric','unit','version','assessment','score_date','retrieved_at','source_url','protocol','suite_coverage','status','configuration','reasoning_effort','trial_count','standard_error','standard_error_unit','passes','source_note','run_date','reported_score_date','source_updated_at'];
+  const headers=['benchmark','model','provider','harness','score','metric','unit','version','assessment','score_date','retrieved_at','source_url','protocol','suite_coverage','status','configuration','reasoning_effort','trial_count','standard_error','standard_error_unit','passes','source_note','run_date','reported_score_date','source_updated_at','evaluations_observed','evaluations_total','evaluation_coverage_unit','confidence_interval_lower','confidence_interval_upper','confidence_level','confidence_interval_method'];
   const escape=value=>{
     let text=String(value??'');
     if(typeof value!=='number'&&/^[=+@\-\t\r]/.test(text))text="'"+text;
     return '"'+text.replaceAll('"','""')+'"';
   };
-  return [headers,...rows.map(row=>{const board=hubModel.boards.find(board=>board.id===row.board_id),error=scoreChartUncertainty(row,board);return [row.benchmark_name,row.model,row.provider,row.harness,row.score,row.metric,row.unit,row.version,row.assessment,row.score_date,row.retrieved_at,row.source_url,row.protocol,hubCoverage(row),row.score===null?'not_reported':'reported',row.configuration_label,row.effort,row.trial_count,error?.value,error?.unit,row.passes,row.source_note,row.run_date,row.reported_score_date,row.data_updated_at||board?.data_updated_at||board?.source?.data_updated_at]})].map(row=>row.map(escape).join(',')).join('\r\n');
+  return [headers,...rows.map(row=>{const board=hubModel.boards.find(board=>board.id===row.board_id),error=scoreChartUncertainty(row,board),interval=row.confidence_interval,coverage=row.evaluation_coverage;return [row.benchmark_name,row.model,row.provider,row.harness,row.score,row.metric,row.unit,row.version,row.assessment,row.score_date,row.retrieved_at,row.source_url,row.protocol,hubCoverage(row),row.score===null?'not_reported':'reported',row.configuration_label,row.effort,row.trial_count,error?.value,error?.unit,row.passes,row.source_note,row.run_date,row.reported_score_date,row.data_updated_at||board?.data_updated_at||board?.source?.data_updated_at,coverage?.observed,coverage?.total,coverage?.unit,interval?.lower,interval?.upper,interval?.level,interval?.method]})].map(row=>row.map(escape).join(',')).join('\r\n');
 }
 function hubExportDocument(rows,board){
   const exportedBoard=board?.task_matrix?{...board,task_matrix:{tasks:board.task_matrix.tasks,rows:Object.fromEntries(rows.flatMap(row=>{const id=row.source_row_id;return id&&board.task_matrix.rows[id]?[[id,board.task_matrix.rows[id]]]:[]}))}}:board;
