@@ -7,7 +7,7 @@
     <meta name="description" content="以 Terminal-Bench-Science 为核心的科学 AI 评测工作台：查看官方模型成绩、学科差异与逐任务结果，选择评测并按官方协议运行。" />
     <title>Terminal-Bench-Science 成绩与任务 · AI4S Atlas</title>
     <link rel="icon" type="image/svg+xml" href="favicon.svg?v=d7034d7647aa" />
-    <link rel="stylesheet" href="styles.css?v=1ac27f6258c4" />
+    <link rel="stylesheet" href="styles.css?v=eabd868d2d90" />
   </head>
   <body class="vals-layout">
     <a class="skip-link" href="#results">跳至评测成绩</a>
@@ -76,7 +76,7 @@
       <section class="atlas-section" id="catalog" data-atlas-view="catalog" hidden aria-labelledby="catalog-title">
         <div class="section-heading">
           <div><p class="eyebrow">02 / EXPLORE THE ATLAS</p><h2 id="catalog-title">下一项实验，从这里开始。</h2></div>
-          <button class="button button-ghost catalog-download" id="download-catalog">下载目录 ↓</button><div class="registry-status"><span class="status-dot"></span><span id="sync-status" role="status">正在读取目录…</span></div>
+          <div class="catalog-download-actions"><button class="button button-ghost catalog-download" id="download-catalog">下载目录 ↓</button><button class="button button-ghost catalog-download" id="download-catalog-csv" title="导出当前筛选的成绩收录状态；未筛选时导出全目录">目录状态 CSV ↓</button></div><div class="registry-status"><span class="status-dot"></span><span id="sync-status" role="status">正在读取目录…</span></div>
         </div>
         <div id="quick-domains" class="quick-domains" role="group" aria-label="快速选择科学域">
           <button data-quick-domain="" aria-pressed="true">全部评测 <span>↗</span></button>
@@ -101,6 +101,7 @@
             <div class="filter-group"><label for="mode-filter">评测范式 <span>03</span></label><select id="mode-filter"><option value="">全部范式</option></select></div>
             <div class="filter-group"><label for="access-filter">访问边界 <span>04</span></label><select id="access-filter"><option value="">全部访问状态</option></select></div>
             <div class="filter-group"><label for="year-filter">发布年份 <span>05</span></label><select id="year-filter"><option value="">全部年份</option></select></div>
+            <div class="filter-group"><label for="result-status-filter">成绩收录状态 <span>06</span></label><select id="result-status-filter"><option value="">全部成绩状态</option><option value="reported">已收录公开成绩</option><option value="pending_review">作者成绩待核实</option><option value="no_public_results">已核对：未公开成绩</option><option value="source_unavailable">成绩来源不可达</option><option value="no_comparable_results">无可比模型成绩</option></select></div>
             <div class="filter-divider"></div>
             <div class="filter-group"><label for="company-filter">模型公司 / 品牌</label><select id="company-filter"><option value="">全部公司</option></select></div>
             <div class="filter-group"><label for="industry-filter">公司关系类型</label><select id="industry-filter"><option value="">全部关系</option><option value="released_by">公司发布/联合发布</option><option value="official_evaluation">公司官方报告使用</option><option value="external_evaluation">第三方测试其模型</option><option value="evaluation_unresolved">评测主体待核实</option></select></div>
@@ -115,6 +116,7 @@
                 <div class="view-switch" role="group" aria-label="显示方式"><button id="view-grid" aria-label="卡片视图" aria-pressed="true"><svg viewBox="0 0 18 18" aria-hidden="true"><path d="M2 2h5v5H2zm9 0h5v5h-5zM2 11h5v5H2zm9 0h5v5h-5z"/></svg></button><button id="view-list" aria-label="列表视图" aria-pressed="false"><svg viewBox="0 0 18 18" aria-hidden="true"><path d="M2 3h14v2H2zm0 5h14v2H2zm0 5h14v2H2z"/></svg></button></div>
               </div>
             </div>
+            <div id="result-coverage-summary" class="result-coverage-summary" aria-label="全目录作者成绩收录状态" aria-live="polite"></div>
             <div id="active-filters" class="active-filters" aria-label="已选筛选条件" hidden></div>
             <div id="benchmark-list" class="benchmark-list" aria-live="polite"><div class="loading-state"><span class="loading-mark" aria-hidden="true">✳</span><p>正在展开科学评测地图…</p></div></div>
             <noscript><p class="empty-state">请启用 JavaScript，以浏览和筛选评测目录。</p></noscript>
@@ -190,6 +192,6 @@
 
     <footer class="footer shell"><div class="footer-brand"><a class="footer-signature" href="#top" data-app-view="benchmark" data-tbs-view="bars" aria-label="AI4S Atlas 首页"><svg class="brand-mark atlas-coordinate-mark" viewBox="0 0 64 64" fill="none" aria-hidden="true"><g class="mark-frame" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="square" stroke-linejoin="miter"><path class="mark-frame-nw" d="M8 22V8h14"/><path class="mark-frame-ne" d="M42 8h14v14"/><path class="mark-frame-se" d="M56 42v14H42"/><path class="mark-frame-sw" d="M22 56H8V42"/></g><path class="mark-core" fill="currentColor" fill-rule="evenodd" d="M19 44 29.3 19h5.4L45 44h-7.2l-2-5.6h-7.6L26.2 44H19Zm11.4-11.8h3.2L32 27.4l-1.6 4.8Z"/><rect class="mark-accent" x="52.5" y="4.5" width="7" height="7" fill="#61766a"/></svg><strong>AI4S <em>Atlas</em></strong></a><p>Measure what matters.<br />Understand what comes next.</p></div><div class="footer-meta"><span id="footer-meta">科学 AI 评测与公开成绩 · 官方证据优先</span><a href="https://github.com/Sci-ultron/ai4s-evaluation-atlas" target="_blank" rel="noreferrer">维护与贡献 ↗</a><a href="#top">回到顶部 ↑</a></div><p class="footer-fineprint">成绩与目录均保留来源和版本；缺失信息明确标注。评测在参与者自己的环境执行，公开提交经审核后收录。目录分类为规则派生。</p><details class="branding-credits"><summary>图表与标识来源</summary><div id="brand-credits-body"></div></details></footer>
     <div id="detail-drawer" class="drawer" aria-hidden="true"><div class="drawer-backdrop" data-close-drawer></div><aside class="drawer-panel"><div class="drawer-topline"><span>AI4S / BENCHMARK NOTES</span><button class="drawer-close" data-close-drawer aria-label="关闭详情">关闭 <span aria-hidden="true">×</span></button></div><div id="drawer-content"></div></aside></div>
-    <script src="app.js?v=c0b7d7848394" defer></script>
+    <script src="app.js?v=e149f5ec8a70" defer></script>
   </body>
 </html>

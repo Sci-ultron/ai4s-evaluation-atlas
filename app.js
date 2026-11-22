@@ -157,7 +157,7 @@ const labels={knowledge:"知识与问答",deep_reasoning:"科学推理与证明"
 const domainLabels={Biology:"生物",Medicine:"医学",Chemistry:"化学",Materials:"材料",Physics:"物理",General:"跨学科",Agentic:"科研 Agent",Math:"数学",Mathematics:"数学",'Earth Science':"地球科学",Earth:"地球科学",'Earth and Climate':"地球与气候",Statistics:"统计",Engineering:"工程",'Social Science':"社会科学",'Scientific Code':"科学代码",Agriculture:"农业",'Cross-disciplinary':"跨学科",Literature:"科学文献",Safety:"科学安全"};
 const $=id=>document.getElementById(id);const esc=x=>String(x??"").replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));const label=x=>labels[x]||domainLabels[x]||String(x).replaceAll('_',' ');const fmt=x=>Number(x).toLocaleString('en-US');
 let data,filtered=[],page=1,selectedSuite=null,extraFilter=null,previousFocus=null;const pageSize=12;
-const filterFields={search:'关键词',domain:'科学域',family:'能力',mode:'范式',access:'访问',year:'年份',company:'公司',industry:'关系'};
+const filterFields={search:'关键词',domain:'科学域',family:'能力',mode:'范式',access:'访问',year:'年份',company:'公司',industry:'关系','result-status':'成绩状态'};
 const filterElement=key=>$(key==='search'?'search':`${key}-filter`);
 function safeUrl(url){try{const u=new URL(url);return ['http:','https:'].includes(u.protocol)?u.href:null}catch{return null}}
 const list=x=>Array.isArray(x)?x:[];
@@ -227,7 +227,7 @@ function renderFrontier(){
 // Reviewed scores only: every visual keeps source, version, assessment and units intact.
 const scoreVisualState={tab:'bars',allBars:false,allHeatmap:false,pairA:'',pairB:'',scope:'',tbsDomain:''};
 function scoreConfigurationKey(row){return `${row.source_id||row.board_id}::${row.configuration_id||row.id}`}
-function scoreScopeKey(board){return JSON.stringify([board?.source_id,board?.version,board?.assessment,board?.metric,board?.unit||'',board?.protocol||board?.source?.protocol||''])}
+function scoreScopeKey(board){return JSON.stringify([board?.source_id,board?.version,board?.assessment,board?.metric,board?.unit||'',board?.protocol||board?.source?.protocol||'',metricDirection(board),metricTarget(board)])}
 function scoreChartUncertainty(row,board){
   const unit=board&&Object.hasOwn(board,'unit')?(board.unit||''):(row?.unit||'');
   if(row?.unit!=null&&row.unit!==unit)return null;
@@ -245,6 +245,64 @@ function hubIntervalLabel(row){
   const fmt=value=>hubScore({score:value,unit:'',decimals:row.decimals},false);
   return `${(100*interval.level).toLocaleString('en-US',{maximumFractionDigits:2})}% ${interval.method} CI [${fmt(interval.lower)}, ${fmt(interval.upper)}]`;
 }
+// Metric semantics remain native: sorting and shading follow each source's direction.
+function metricDirection(metric){return ['higher','lower','target','none'].includes(metric?.direction)?metric.direction:'higher'}
+function metricTarget(metric){return typeof metric?.target==='number'&&Number.isFinite(metric.target)?metric.target:null}
+function metricDirectionLabel(metric){
+  const direction=metricDirection(metric),target=metricTarget(metric);
+  return direction==='lower'?'↓ 越低越好':direction==='target'?(target===null?'目标未披露 · 不排名':`◎ 越接近 ${target}${metric?.unit?' '+metric.unit:''} 越好`):direction==='none'?'方向未定义 · 不排名':'↑ 越高越好';
+}
+function metricPreference(value,metric){
+  if(typeof value!=='number'||!Number.isFinite(value))return null;
+  const direction=metricDirection(metric),target=metricTarget(metric);
+  return direction==='lower'?-value:direction==='target'?(target===null?null:-Math.abs(value-target)):direction==='none'?null:value;
+}
+function hubPreferredSort(board){return metricDirection(board)==='lower'?'score-asc':metricDirection(board)==='target'&&metricTarget(board)!==null?'target':metricDirection(board)==='none'||metricDirection(board)==='target'?'model':'score-desc'}
+function metricScoreCompare(a,b,board,sort=hubPreferredSort(board)){
+  if(a===null||typeof a!=='number'||!Number.isFinite(a))return b===null||typeof b!=='number'||!Number.isFinite(b)?0:1;
+  if(b===null||typeof b!=='number'||!Number.isFinite(b))return -1;
+  if(sort==='target'){const target=metricTarget(board);return target===null?0:Math.abs(a-target)-Math.abs(b-target)}
+  return sort==='score-asc'?a-b:b-a;
+}
+function hubLeaders(board){
+  if(metricDirection(board)==='none'||metricDirection(board)==='target'&&metricTarget(board)===null)return [];
+  return hubModel.rows.filter(row=>row.board_id===board.id&&row.score!==null).sort((a,b)=>metricScoreCompare(a.score,b.score,board)||a.model.localeCompare(b.model)).slice(0,3);
+}
+function authorReportMarkup(board){
+  if(board?.report_kind!=='author_reported')return '';
+  const table=typeof board.source_table==='object'?JSON.stringify(board.source_table):board.source_table;
+  return `<div class="author-report-note"><strong>AUTHORS · REPORTED</strong><span>作者报告，本站未独立复测；不自动运行实验。</span>${board.source_revision?`<small>来源版本 ${esc(board.source_revision)}</small>`:''}${table?`<small>来源表格 ${esc(table)}</small>`:''}${board.source_sha256?`<small>来源 SHA-256 ${esc(board.source_sha256)}</small>`:''}</div>`;
+}
+function resultCoverageLabel(status){return ({reported:'已收录公开成绩',pending_review:'作者成绩待核实',no_public_results:'已核对：未公开成绩',source_unavailable:'成绩来源不可达',no_comparable_results:'无可比模型成绩'})[status]||'作者成绩待核实'}
+function benchmarkResultCoverage(benchmark){
+  const explicit=benchmark?.result_coverage;
+  if(explicit&&['reported','pending_review','no_public_results','source_unavailable','no_comparable_results'].includes(explicit.status))return explicit;
+  const count=evaluationResultCount(benchmark?.id);
+  return count?{status:'reported',label:'已收录公开成绩',reported_primary_scores:count}:{status:'pending_review',label:'作者成绩待核对',reported_primary_scores:0};
+}
+function benchmarkResultCoverageMarkup(benchmark,detail=false){
+  const coverage=benchmarkResultCoverage(benchmark),labels={reported:'已收录公开成绩',pending_review:'作者成绩待核对',no_public_results:'已核对：未公开成绩',source_unavailable:'成绩来源暂不可访问',no_comparable_results:'未披露可比模型成绩'};
+  const checked=coverage.reviewed_at?` · 核对 ${String(coverage.reviewed_at).slice(0,10)}`:'';
+  return `<div class="result-coverage ${esc(coverage.status)}" data-result-coverage="${esc(coverage.status)}"><span>${esc(coverage.label||labels[coverage.status])}</span>${detail?`<p>${esc(coverage.note||'作者成绩按来源、版本和协议逐项补录；待核对不代表作者没有公布成绩。')}${esc(checked)}</p><small>没有公开成绩的条目仅标注状态，不自动运行实验。</small>${frontierSources(list(coverage.sources).map(source=>typeof source==='string'?{url:source,label:'成绩核对来源'}:source))}`:''}</div>`;
+}
+function catalogCsv(benchmarks=list(data?.benchmarks)){
+  const headers=['benchmark_id','name','domain','paper_url','repository_url','dataset_url','homepage_url','result_status','result_label','reported_primary_scores','scoreboard_ids','reviewed_at','review_note','review_sources_json','model_experiments'];
+  const cell=value=>{let text=String(value??'');if(typeof value!=='number'&&/^[=+@\-\t\r]/.test(text))text="'"+text;return '"'+text.replaceAll('"','""')+'"'};
+  return [headers,...benchmarks.map(b=>{const coverage=benchmarkResultCoverage(b);return [b.id,b.name,b.domain,b.paper?.url,b.official?.repository,b.official?.dataset,b.official?.homepage,coverage.status,coverage.label||resultCoverageLabel(coverage.status),coverage.reported_primary_scores??evaluationResultCount(b.id),list(coverage.scoreboard_ids).join(' | '),coverage.reviewed_at,coverage.note,JSON.stringify(list(coverage.sources)),0]})].map(row=>row.map(cell).join(',')).join('\r\n');
+}
+function downloadCatalogCsv(){
+  if(!data)return;
+  const url=URL.createObjectURL(new Blob(['\uFEFF'+catalogCsv(filtered)],{type:'text/csv;charset=utf-8'})),anchor=document.createElement('a');
+  anchor.href=url;anchor.download='ai4s-catalog-status-current-filter.csv';anchor.click();URL.revokeObjectURL(url);
+}
+function renderResultCoverageSummary(){
+  const root=$('result-coverage-summary');if(!root)return;
+  const summary=data?.result_coverage?.summary||data?.result_coverage;
+  if(!summary){root.innerHTML='<p>作者成绩按来源逐项核对；待核对不等于未公开。没有公开成绩则仅标注状态，不自动运行实验。</p>';return}
+  const counts=summary.status_counts||{},pending=counts.pending_review||0;
+  root.innerHTML=`<div><strong>${fmt(summary.with_public_scores||0)} / ${fmt(summary.total_benchmarks||data.benchmark_count)}</strong><span>评测已收录公开成绩</span></div><p><span>${fmt(pending)} 待核对</span> · <span>${fmt(counts.no_public_results||0)} 已核对未公开</span> · <span>${fmt(counts.source_unavailable||0)} 来源暂不可访问</span> · <span>${fmt(counts.no_comparable_results||0)} 未披露可比成绩</span><small>逐条保留作者报告与协议。待核对不等于没有成绩；没有公开成绩则仅标注状态，不自动运行实验。</small></p>`;
+}
+
 function chartDomain(board,rows){
   const numbers=rows.flatMap(row=>{if(typeof row.score!=='number'||!Number.isFinite(row.score))return [];const interval=scoreChartInterval(row,board),error=scoreChartUncertainty(row,board);return interval?[row.score,interval.lower,interval.upper]:error?[row.score,row.score-error.value,row.score+error.value]:[row.score]});
   const min=Math.min(0,...numbers),observed=Math.max(0,...numbers);
@@ -263,7 +321,7 @@ function prepareHeatmap(model,state){
     if(state.sort==='model')return a.model.localeCompare(b.model)||a.harness.localeCompare(b.harness);
     const av=currentScores.get(a.key),bv=currentScores.get(b.key),an=typeof av==='number'&&Number.isFinite(av),bn=typeof bv==='number'&&Number.isFinite(bv);
     if(an!==bn)return an?-1:1;
-    return an&&av!==bv?(state.sort==='score-asc'?av-bv:bv-av):a.model.localeCompare(b.model)||a.harness.localeCompare(b.harness);
+    return (an?metricScoreCompare(av,bv,current,state.sort):0)||a.model.localeCompare(b.model)||a.harness.localeCompare(b.harness);
   });
   const lookup=new Map(sourceRows.map(row=>[JSON.stringify([row.board_id,scoreConfigurationKey(row)]),row]));
   const cells=configurations.flatMap(configuration=>boards.map(board=>{
@@ -274,7 +332,7 @@ function prepareHeatmap(model,state){
 }
 function scoreDelta(a,b,board){
   if(!a||!b||![a.score,b.score].every(value=>typeof value==='number'&&Number.isFinite(value)))return {value:null,unit:board?.unit==='%'?'百分点':board?.unit||'原生分值',reason:'missing'};
-  const same=a.board_id===b.board_id&&a.board_id===board?.id&&['source_id','version','assessment','metric','unit','protocol'].every(key=>{
+  const same=a.board_id===b.board_id&&a.board_id===board?.id&&['source_id','version','assessment','metric','unit','protocol','direction','target'].every(key=>{
     const expected=board[key]??'',av=a[key]??expected,bv=b[key]??expected;
     return av===bv&&(board[key]==null||av===expected);
   });
@@ -292,12 +350,23 @@ function prepareScoreDifferences(heatmap,aKey,bKey){
 function scoreChartText(text){return typeof brandBadge==='function'?brandBadge(text):typeof renderBrandText==='function'?renderBrandText(text):esc(text)}
 function scoreChartTick(value){return value.toLocaleString('en-US',{maximumFractionDigits:Math.abs(value)<=1?2:1})}
 function scoreChartSource(board){return hubSourceLink(board?.source_url||board?.source?.url,board?.source?.name||'原始成绩与协议')}
-function scoreChartColor(value,domain){
+function scoreChartColor(value,domain,metric){
   if(value===null)return {background:'',color:'var(--muted)'};
-  const t=Math.max(0,Math.min(1,(value-domain.min)/(domain.max-domain.min))),start=[245,247,241],end=[61,105,80];
+  let t=Math.max(0,Math.min(1,(value-domain.min)/(domain.max-domain.min)));
+  const direction=metricDirection(metric),target=metricTarget(metric);
+  if(direction==='lower')t=1-t;
+  if(direction==='target')t=target===null?0:1-Math.min(1,Math.abs(value-target)/Math.max(Math.abs(domain.max-target),Math.abs(domain.min-target),Number.EPSILON));
+  if(direction==='none')t=0;
+  const start=[245,247,241],end=[61,105,80];
   const rgb=start.map((v,i)=>Math.round(v+(end[i]-v)*t));
   const luminance=rgb.map(v=>{const n=v/255;return n<=.04045?n/12.92:((n+.055)/1.055)**2.4}).reduce((s,v,i)=>s+v*[.2126,.7152,.0722][i],0);
   return {background:`rgb(${rgb.join(',')})`,color:luminance<.21?'#fff':'#202823'};
+}
+function hubBarEvidenceMarkup(row,board){
+  if(board?.report_kind!=='author_reported')return hubRowEvidenceMarkup(row,false);
+  const checked=row.retrieved_at?String(row.retrieved_at).slice(0,10):'未披露';
+  const run=row.run_date?'运行 '+row.run_date:'运行日期未披露';
+  return `<div class="author-chart-evidence"><small class="author-row-label">作者报告 · 未独立复测</small><small class="author-chart-dates">${esc(run)} · 核对 ${esc(checked)}</small><details class="author-chart-source"><summary>作者条件与来源</summary><div class="author-chart-source-body"><p>${esc(row.source_note||'来源未补充逐配置条件。')}</p>${hubRowDateMarkup(row)}${hubSourceLink(row.source_url,'作者聚合来源')}</div></details></div>`;
 }
 function scoreVisualBarMarkup(board,rows){
   const visible=scoreVisualState.allBars?rows:rows.slice(0,12),domain=chartDomain(board,rows),range=domain.max-domain.min,zero=100*(0-domain.min)/range;
@@ -307,9 +376,9 @@ function scoreVisualBarMarkup(board,rows){
     const interval=numeric?scoreChartInterval(row,board):null;
     const uncertainty=interval?`<span class="score-error-line" style="left:${100*(interval.lower-domain.min)/range}%;width:${100*(interval.upper-interval.lower)/range}%" aria-hidden="true"></span>`:error?`<span class="score-error-line" style="left:${100*(row.score-error.value-domain.min)/range}%;width:${200*error.value/range}%" aria-hidden="true"></span>`:'';
     const errorLabel=interval?`<small class="score-confidence-interval">${esc(hubIntervalLabel(row))}</small>`:error?`<small>± ${esc(error.value.toLocaleString('en-US',{maximumFractionDigits:error.decimals}))} 标准误<br>(${esc(error.unit)})</small>`:'';
-    return `<div class="score-bar-row" role="listitem"><div class="score-bar-label">${scoreChartText(row.model)}<small>${esc(hubHarnessLabel(row))}</small>${hubRowEvidenceMarkup(row,false)}</div><div class="score-bar-track${numeric?'':' is-missing'}"><i class="score-zero-line" style="left:${zero}%"></i>${numeric?`<span class="score-bar-mark${row.score===0?' is-zero':''}" style="left:${Math.min(zero,position)}%;width:${Math.abs(position-zero)}%"></span>${uncertainty}`:'<span class="score-null-label">未报告</span>'}</div><strong class="score-bar-value">${esc(hubScore(row))}${errorLabel}</strong></div>`;
+    return `<div class="score-bar-row" role="listitem"><div class="score-bar-label">${scoreChartText(row.model)}<small>${esc(hubHarnessLabel(row))}</small>${hubBarEvidenceMarkup(row,board)}</div><div class="score-bar-track${numeric?'':' is-missing'}"><i class="score-zero-line" style="left:${zero}%"></i>${numeric?`<span class="score-bar-mark${row.score===0?' is-zero':''}" style="left:${Math.min(zero,position)}%;width:${Math.abs(position-zero)}%"></span>${uncertainty}`:'<span class="score-null-label">未报告</span>'}</div><strong class="score-bar-value">${esc(hubScore(row))}${errorLabel}</strong></div>`;
   }).join('');
-  return `<figure class="score-figure"><figcaption><h3>${esc(board.name)} · 模型成绩</h3><p>${esc(board.metric)}${board.unit?' · '+esc(board.unit):' · 原生刻度'}。按当前筛选与排序显示模型和运行框架。</p></figcaption><div class="score-bar-axis"><div>${ticks}</div><span>${esc(board.unit||'原生分值')}</span></div><div class="score-bars" role="list" aria-label="当前评测的公开成绩条形图">${bars||'<p class="score-chart-empty">当前筛选没有配置。</p>'}</div>${rows.length>12?`<button class="score-chart-more" data-score-action="bars">${scoreVisualState.allBars?'收起为 12 个配置':'显示全部 '+rows.length+' 个配置'} ↕</button>`:''}<p class="score-chart-note">刻度从 ${esc(scoreChartTick(domain.min))} 到 ${esc(scoreChartTick(domain.max))}${board.unit==='%'?'%':''}；— 表示未报告，0 为真实成绩。${rows.some(row=>scoreChartInterval(row,board))?'区间类型、置信水平和重采样方法保留来源披露，不作为标准误。':rows.some(row=>scoreChartUncertainty(row,board))?'误差线保留来源报告的 ±1 标准误，不是置信区间。':''}仅比较此表的版本和运行协议。${scoreChartSource(board)}</p></figure>`;
+  return `<figure class="score-figure"><figcaption><h3>${esc(board.name)} · 模型成绩</h3><p>${esc(board.metric)}${board.unit?' · '+esc(board.unit):' · 原生刻度'} · ${esc(metricDirectionLabel(board))}。按当前筛选与排序显示模型和运行框架。</p></figcaption><div class="score-bar-axis"><div>${ticks}</div><span>${esc(board.unit||'原生分值')}</span></div><div class="score-bars" role="list" aria-label="当前评测的公开成绩条形图">${bars||'<p class="score-chart-empty">当前筛选没有配置。</p>'}</div>${rows.length>12?`<button class="score-chart-more" data-score-action="bars">${scoreVisualState.allBars?'收起为 12 个配置':'显示全部 '+rows.length+' 个配置'} ↕</button>`:''}<p class="score-chart-note">刻度从 ${esc(scoreChartTick(domain.min))} 到 ${esc(scoreChartTick(domain.max))}${board.unit==='%'?'%':''}；— 表示未报告，0 为真实成绩。${rows.some(row=>scoreChartInterval(row,board))?'区间类型、置信水平和重采样方法保留来源披露，不作为标准误。':rows.some(row=>scoreChartUncertainty(row,board))?'误差线保留来源报告的 ±1 标准误，不是置信区间。':''}仅比较此表的版本和运行协议。${scoreChartSource(board)}</p></figure>`;
 }
 function scoreVisualHeatmapMarkup(heatmap,state){
   let configurations=heatmap.configurations;
@@ -318,12 +387,12 @@ function scoreVisualHeatmapMarkup(heatmap,state){
   const representatives=!selected.length&&!String(state.query||'').trim()?[...new Map([...configurations].reverse().map(config=>[config.provider,config])).values()].sort((a,b)=>configurations.indexOf(a)-configurations.indexOf(b)):[];
   const balanced=representatives.length>1;
   const visible=scoreVisualState.allHeatmap?configurations:(balanced?representatives:configurations).slice(0,8),lookup=new Map(heatmap.cells.map(cell=>[JSON.stringify([cell.configurationKey,cell.boardId]),cell]));
-  const legend=heatmap.domain.ticks.map(value=>{const c=scoreChartColor(value,heatmap.domain);return `<span><i style="background:${c.background}"></i>${esc(scoreChartTick(value))}${heatmap.domain.unit==='%'?'%':''}</span>`}).join('');
+  const legend=heatmap.domain.ticks.map(value=>{const c=scoreChartColor(value,heatmap.domain,heatmap.current);return `<span><i style="background:${c.background}"></i>${esc(scoreChartTick(value))}${heatmap.domain.unit==='%'?'%':''}</span>`}).join('');
   const table=visible.length?`<div class="score-matrix-wrap" tabindex="0" role="region" aria-label="模型与评测基准的成绩热力图，可横向滚动"><table class="score-heatmap"><caption class="sr-only">同来源、版本、评估类型和指标的逐基准成绩</caption><thead><tr><th scope="col">模型 / 运行框架</th>${heatmap.boards.map(board=>`<th scope="col"><span>${esc(board.name)}</span></th>`).join('')}</tr></thead><tbody>${visible.map(config=>`<tr><th scope="row">${scoreChartText(config.model)}<small>${esc(hubHarnessLabel(config))}</small>${hubRowEvidenceMarkup(config)}</th>${heatmap.boards.map(board=>{
-    const cell=lookup.get(JSON.stringify([config.key,board.id])),value=cell?.score??null,color=scoreChartColor(value,heatmap.domain);
+    const cell=lookup.get(JSON.stringify([config.key,board.id])),value=cell?.score??null,color=scoreChartColor(value,heatmap.domain,heatmap.current);
     return `<td class="score-heat-cell${value===null?' is-missing':''}" style="${value===null?'':`background:${color.background};color:${color.color}`}" aria-label="${esc(config.model+' / '+config.harness+'，'+board.name+'，'+(value===null?'未报告':hubScore(cell.row)))}">${esc(value===null?'—':hubScore(cell.row,false))}</td>`;
   }).join('')}</tr>`).join('')}</tbody></table></div>`:'<p class="score-chart-empty">当前筛选没有可显示的模型配置。</p>';
-  return `<figure class="score-figure"><figcaption><h3>模型 × 评测基准</h3><p>${esc(heatmap.current.source?.name||heatmap.current.name)} · ${esc(heatmap.current.version)} · ${esc(heatmap.current.assessment==='safeguards'?'安全与拒答':'科学能力')} · ${esc(heatmap.current.metric)}${heatmap.domain.unit?'（'+esc(heatmap.domain.unit)+'）':''}。${selected.length?'仅查看已勾选配置。':balanced&&!scoreVisualState.allHeatmap?'默认每家公司显示当前排序的首个配置，可展开全部。':'按当前基准的排序显示配置。'}</p></figcaption><div class="score-heat-legend" aria-label="热力图颜色刻度">${legend}<span><i class="is-missing"></i>未报告</span></div>${table}${configurations.length>8?`<button class="score-chart-more" data-score-action="heatmap">${scoreVisualState.allHeatmap?'收起配置':'显示全部 '+configurations.length+' 个配置'} ↕</button>`:''}<p class="score-chart-note">${heatmap.boards.length} 项评测基准，${visible.length} / ${configurations.length} 个当前配置。颜色与数值使用同一刻度；每列为一项独立评测基准，不计算跨基准平均分。${heatmap.boards.length===1?'此来源当前只有一项可兼容基准，其他评测协议不混入本图。':''}${scoreChartSource(heatmap.current)}</p></figure>`;
+  return `<figure class="score-figure"><figcaption><h3>模型 × 评测基准</h3><p>${esc(heatmap.current.source?.name||heatmap.current.name)} · ${esc(heatmap.current.version)} · ${esc(heatmap.current.assessment==='safeguards'?'安全与拒答':'科学能力')} · ${esc(heatmap.current.metric)}${heatmap.domain.unit?'（'+esc(heatmap.domain.unit)+'）':''}。${selected.length?'仅查看已勾选配置。':balanced&&!scoreVisualState.allHeatmap?'默认每家公司显示当前排序的首个配置，可展开全部。':'按当前基准的排序显示配置。'}</p></figcaption><div class="score-heat-legend" aria-label="热力图颜色刻度">${legend}<span><i class="is-missing"></i>未报告</span></div>${table}${configurations.length>8?`<button class="score-chart-more" data-score-action="heatmap">${scoreVisualState.allHeatmap?'收起配置':'显示全部 '+configurations.length+' 个配置'} ↕</button>`:''}<p class="score-chart-note">${heatmap.boards.length} 项评测基准，${visible.length} / ${configurations.length} 个当前配置。${esc(metricDirectionLabel(heatmap.current))}；颜色深浅按该指标方向或与目标的距离展示，未定义方向时不着优劣色。每列为一项独立评测基准，不计算跨基准平均分。${heatmap.boards.length===1?'此来源当前只有一项可兼容基准，其他评测协议不混入本图。':''}${scoreChartSource(heatmap.current)}</p></figure>`;
 }
 function scoreVisualDifferenceMarkup(heatmap){
   const configs=heatmap.configurations;
@@ -337,13 +406,13 @@ function scoreVisualDifferenceMarkup(heatmap){
   const rows=differences.map(row=>{
     const numeric=row.value!==null,positive=numeric&&row.value>=0,width=numeric?50*Math.abs(row.value)/max:0;
     const number=numeric?(row.value>0?'+':'')+row.value.toLocaleString('en-US',{maximumFractionDigits:unit==='百分点'?2:4}):'—';
-    return `<div class="score-delta-row"><div class="score-delta-label">${esc(row.board.name)}</div><div class="score-delta-track${numeric?'':' is-missing'}"><i class="score-delta-zero"></i>${numeric?`<span class="score-delta-mark ${positive?'is-positive':'is-negative'}${row.value===0?' is-zero':''}" style="left:${positive?50:50-width}%;width:${width}%"></span>`:'<span class="score-null-label">缺少可比成绩</span>'}</div><strong class="score-delta-value">${esc(number)}</strong></div>`;
+    return `<div class="score-delta-row"><div class="score-delta-label">${esc(row.board.name)}<small>${esc(metricDirectionLabel(row.board))}</small></div><div class="score-delta-track${numeric?'':' is-missing'}"><i class="score-delta-zero"></i>${numeric?`<span class="score-delta-mark is-raw-difference ${positive?'is-positive':'is-negative'}${row.value===0?' is-zero':''}" style="left:${positive?50:50-width}%;width:${width}%"></span>`:'<span class="score-null-label">缺少可比成绩</span>'}</div><strong class="score-delta-value">${esc(number)}</strong></div>`;
   }).join('');
-  return `<figure class="score-figure"><figcaption><h3>逐基准差值：A − B</h3><p>同来源、版本、基准、指标与单位逐项相减；差值不是统计显著性判断。</p></figcaption>${controls}${[a,b].filter(config=>config.source_note||Object.hasOwn(config,'run_date')||config.reported_score_date).map(config=>`<p class="score-chart-note">${esc(config.model)}${hubRowEvidenceMarkup(config)}</p>`).join('')}<div class="score-pair-key"><span><i class="is-positive"></i>A：${scoreChartText(a.model)} <small>${esc(hubHarnessLabel(a))}</small></span><span><i class="is-negative"></i>B：${scoreChartText(b.model)} <small>${esc(hubHarnessLabel(b))}</small></span></div><div class="score-delta-axis"><div><span>−${esc(scoreChartTick(max))}</span><span>0</span><span>+${esc(scoreChartTick(max))}</span></div><span>${esc(unit)}</span></div><div class="score-deltas">${rows}</div><p class="score-chart-note">正值表示 A 的报告分数更高，负值表示 B 更高；缺少任一结果时不计算。${numbers.length} / ${differences.length} 项基准可比较，范围为 ±${esc(scoreChartTick(max))} ${esc(unit)}。${scoreChartSource(heatmap.current)}</p></figure>`;
+  return `<figure class="score-figure"><figcaption><h3>逐基准差值：A − B</h3><p>同来源、版本、基准、指标与单位逐项相减；差值不是统计显著性判断。</p></figcaption>${controls}${[a,b].filter(config=>config.source_note||Object.hasOwn(config,'run_date')||config.reported_score_date).map(config=>`<p class="score-chart-note">${esc(config.model)}${hubRowEvidenceMarkup(config)}</p>`).join('')}<div class="score-pair-key"><span><i class="is-positive"></i>A：${scoreChartText(a.model)} <small>${esc(hubHarnessLabel(a))}</small></span><span><i class="is-negative"></i>B：${scoreChartText(b.model)} <small>${esc(hubHarnessLabel(b))}</small></span></div><div class="score-delta-axis"><div><span>−${esc(scoreChartTick(max))}</span><span>0</span><span>+${esc(scoreChartTick(max))}</span></div><span>${esc(unit)}</span></div><div class="score-deltas">${rows}</div><p class="score-chart-note">正值仅表示 A 的原始数值更高，负值表示 A 的原始数值更低；按各指标方向或目标解读，原始差值不表示优劣。缺少任一结果时不计算。${numbers.length} / ${differences.length} 项基准可比较，范围为 ±${esc(scoreChartTick(max))} ${esc(unit)}。${scoreChartSource(heatmap.current)}</p></figure>`;
 }
 function scoreChartScopeMarkup(board){
   const source=board.source||{},updated=board.data_updated_at||source.data_updated_at,checked=board.retrieved_at||source.retrieved_at;
-  return `<details class="score-protocol"><summary>协议与来源 <span aria-hidden="true">＋</span></summary><div class="score-protocol-body"><div class="score-evidence-meta">${scoreChartSource(board)}<span>${esc(board.version||'版本见来源')}</span><span>${esc(hubBoardDateLabel(board))}</span>${updated?`<span>源更新 ${esc(String(updated).slice(0,10))}</span>`:''}${checked?`<span>本站核对 ${esc(String(checked).slice(0,10))}</span>`:''}</div><p>${esc(board.protocol||source.protocol||'完整协议请核对原始来源。')}</p>${board.metric_note?`<p>${esc(board.metric_note)}</p>`:''}</div></details>`;
+  return `<details class="score-protocol"><summary>协议与来源 <span aria-hidden="true">＋</span></summary><div class="score-protocol-body"><div class="score-evidence-meta">${scoreChartSource(board)}<span>${esc(board.version||'版本见来源')}</span><span>${esc(hubBoardDateLabel(board))}</span>${updated?`<span>源更新 ${esc(String(updated).slice(0,10))}</span>`:''}${checked?`<span>本站核对 ${esc(String(checked).slice(0,10))}</span>`:''}</div>${authorReportMarkup(board)}<p class="metric-direction">${esc(metricDirectionLabel(board))}</p><p>${esc(board.protocol||source.protocol||'完整协议请核对原始来源。')}</p>${board.metric_note?`<p>${esc(board.metric_note)}</p>`:''}</div></details>`;
 }
 // Terminal-Bench-Science: source-reported subject and task results, kept in one protocol.
 const TBS_DOMAIN_LABELS={life:'生命科学',physical:'物理科学',earth:'地球科学',mathematical:'数学科学',engineering:'工程科学'};
@@ -423,7 +492,7 @@ function renderScoreVisuals(){
   if(!tbs&&scoreVisualState.tab==='tasks')scoreVisualState.tab='heatmap';
   const tabs=tbs?[['bars','成绩排行'],['heatmap','5 学科热图'],['tasks','70 任务热图'],['difference','两配置差值']]:[['bars','成绩排行'],['heatmap','跨基准热力'],['difference','两模型差值']];
   const panel=tbs&&scoreVisualState.tab==='heatmap'?scoreVisualTbsDomainsMarkup(board,hubFilteredRows(),hubState):tbs&&scoreVisualState.tab==='tasks'?scoreVisualTbsTasksMarkup(board,hubFilteredRows(),hubState):tbs&&scoreVisualState.tab==='difference'?scoreVisualTbsDifferenceMarkup(board,hubFilteredRows(),hubState):scoreVisualState.tab==='heatmap'?scoreVisualHeatmapMarkup(heatmap,hubState):scoreVisualState.tab==='difference'?scoreVisualDifferenceMarkup(heatmap):scoreVisualBarMarkup(board,hubFilteredRows());
-  root.innerHTML=`<div class="score-visual-heading benchmark-chart-heading"><div><h2>${esc(board.name)}</h2><span>${esc(board.metric)} · ${esc(board.unit||'原生刻度')}</span></div><a href="#hub-raw-results">LEADERBOARD ↓</a></div><div class="score-chart-control-bar"><div class="score-chart-tabs" role="group" aria-label="成绩图表类型">${tabs.map(([id,name])=>`<button data-score-tab="${id}" aria-pressed="${id===scoreVisualState.tab}">${name}</button>`).join('')}</div>${scoreChartScopeMarkup(board)}</div><div class="provider-rail" data-provider-strip aria-label="按模型公司浏览"></div><div class="score-chart-panel">${panel}</div>`;
+  root.innerHTML=`<div class="score-visual-heading benchmark-chart-heading"><div><h2>${esc(board.name)}</h2><span>${esc(board.metric)} · ${esc(board.unit||'原生刻度')} · ${esc(metricDirectionLabel(board))}</span></div><a href="#hub-raw-results">LEADERBOARD ↓</a></div><div class="score-chart-control-bar"><div class="score-chart-tabs" role="group" aria-label="成绩图表类型">${tabs.map(([id,name])=>`<button data-score-tab="${id}" aria-pressed="${id===scoreVisualState.tab}">${name}</button>`).join('')}</div>${scoreChartScopeMarkup(board)}</div><div class="provider-rail" data-provider-strip aria-label="按模型公司浏览"></div><div class="score-chart-panel">${panel}</div>`;
   paintProviderRail(root);
   if(root.dataset?.scoreVisualBound||typeof root.addEventListener!=='function')return;
   if(root.dataset)root.dataset.scoreVisualBound='true';
@@ -461,7 +530,7 @@ function buildEvaluationHub(catalog) {
     return [{...row,board_id:board.id,benchmark_name:row.benchmark_name||board.name,score:typeof row.score==='number'&&Number.isFinite(row.score)?row.score:null,
       model:row.model||'模型未披露',provider:row.provider||'未单列',harness:row.harness||'未单列',metric:row.metric||board.metric,unit:row.unit??board.unit??'',
       version:row.version||board.version,assessment:row.assessment||board.assessment||'capabilities',source_id:row.source_id||board.source_id,
-      source_url:row.source_url||board.source_url||board.source.url,score_date:row.score_date??row.date??board.score_date,
+      direction:metricDirection(row.direction?row:board),target:metricTarget(row.target!=null?row:board),report_kind:row.report_kind||board.report_kind,source_revision:row.source_revision||board.source_revision,source_table:row.source_table||board.source_table,source_sha256:row.source_sha256||board.source_sha256,source_url:row.source_url||board.source_url||board.source.url,score_date:row.score_date??row.date??board.score_date,
       retrieved_at:row.retrieved_at||board.retrieved_at||board.source.retrieved_at,source_note:typeof row.source_note==='string'?row.source_note:'',protocol:row.protocol||board.protocol||board.source.protocol,
       configuration_id:row.configuration_id||[row.model,row.harness].join('::'),decimals:board.decimals??2,secondary:[]}];
   });
@@ -469,7 +538,7 @@ function buildEvaluationHub(catalog) {
     const primary=list(board.columns)[0];
     if(!primary)continue;
     const id='frontier::'+board.id;
-    boards.push({id,name:board.name,benchmark_id:board.benchmark_id,version:board.version||board.name,assessment:'capabilities',metric:primary.label,unit:primary.unit,direction:'higher',
+    boards.push({id,name:board.name,benchmark_id:board.benchmark_id,version:board.version||board.name,assessment:'capabilities',metric:primary.label,unit:primary.unit,direction:metricDirection(primary),target:metricTarget(primary),report_kind:board.report_kind,source_revision:board.source_revision,source_table:board.source_table,source_sha256:board.source_sha256,
       source_id:'frontier::'+board.id,source_url:board.source?.url,source:{name:board.source?.label||'公开报告',url:board.source?.url},score_date:null,reported_score_date:board.score_date??null,has_row_run_dates:list(board.rows).some(row=>row.run_date),
       retrieved_at:board.retrieved_at||catalog.frontier.reviewed_at,data_updated_at:board.source_updated_at,protocol:board.protocol,metric_note:board.metric_note,
       task_count:board.task_count,trials_per_task:board.trials_per_task,task_matrix:board.task_matrix,api_source:board.api_source,
@@ -477,11 +546,11 @@ function buildEvaluationHub(catalog) {
     list(board.rows).forEach((row,index)=>rows.push({id:id+'::'+(row.id||index),source_row_id:row.id,board_id:id,benchmark_id:board.benchmark_id,benchmark_name:board.name,configuration_id:row.id||row.system,configuration_label:row.system,
       model:row.model||row.system,provider:row.provider||'原报告未单列',harness:row.agent||'原报告未单列',harness_provider:row.agent_provider,effort:row.reasoning_effort,
       domain_metrics:row.domain_metrics,trial_count:row.trial_count,passes:row.values?.passes,task_count:board.task_count,trials_per_task:board.trials_per_task,
-      evaluation_coverage:row.evaluation_coverage,confidence_interval:row.confidence_interval,
+      evaluation_coverage:row.evaluation_coverage,confidence_interval:row.confidence_interval,direction:metricDirection(primary),target:metricTarget(primary),report_kind:board.report_kind,source_revision:board.source_revision,source_table:row.source_table||board.source_table,source_sha256:row.source_sha256||board.source_sha256,
       score:typeof row.values?.[primary.key]==='number'&&Number.isFinite(row.values[primary.key])?row.values[primary.key]:null,
       metric:primary.label,unit:primary.unit,decimals:primary.decimals,version:board.version||board.name,assessment:'capabilities',source_id:'frontier::'+board.id,
       source_url:board.source?.url,score_date:row.run_date??null,run_date:row.run_date??null,reported_score_date:board.score_date??null,data_updated_at:board.source_updated_at,retrieved_at:row.retrieved_at||board.retrieved_at||catalog.frontier.reviewed_at,source_note:typeof row.source_note==='string'?row.source_note:'',protocol:board.protocol,
-      secondary:list(board.columns).slice(1).map(column=>({label:column.label,value:row.values?.[column.key]??null,unit:column.unit,decimals:column.decimals}))}));
+      secondary:list(board.columns).slice(1).map(column=>({label:column.label,value:row.values?.[column.key]??null,unit:column.unit,decimals:column.decimals,direction:column.direction||'none',target:metricTarget(column)}))}));
   }
   const preferred=hubPreferredBoardId({boards},catalog);
   boards.sort((a,b)=>Number(b.id===preferred)-Number(a.id===preferred));
@@ -501,7 +570,7 @@ function hubFilteredRows() {
     if(hubState.sort==='model')return a.model.localeCompare(b.model)||a.harness.localeCompare(b.harness);
     if(a.score===null)return b.score===null?a.model.localeCompare(b.model):1;
     if(b.score===null)return -1;
-    return (hubState.sort==='score-asc'?a.score-b.score:b.score-a.score)||a.model.localeCompare(b.model)||a.harness.localeCompare(b.harness);
+    return metricScoreCompare(a.score,b.score,hubCurrentBoard(),hubState.sort)||a.model.localeCompare(b.model)||a.harness.localeCompare(b.harness);
   });
 }
 function hubOptions(values,selected,emptyLabel) {
@@ -534,13 +603,15 @@ function hubRowDateMarkup(row){
   const checked=row.retrieved_at?String(row.retrieved_at).slice(0,10):'未披露';
   return `${hasRunDate?(row.run_date?`<small style="display:block">来源运行日期 ${esc(row.run_date)}</small>`:'<small style="display:block">运行日期未披露</small>'):''}${row.reported_score_date?`<small style="display:block">报告日期 ${esc(row.reported_score_date)}</small>`:''}${hasRunDate&&row.data_updated_at?`<small style="display:block">源更新 ${esc(String(row.data_updated_at).slice(0,10))}</small>`:''}${row.source_note?'':`<small style="display:block">上次核对 ${esc(checked)}</small>`}`;
 }
-function hubRowEvidenceMarkup(row,includeInterval=true){return (includeInterval&&row?.confidence_interval?`<small style="display:block">${esc(hubIntervalLabel(row))}</small>`:'')+hubRowSourceMarkup(row)+hubRowDateMarkup(row)}
+function hubRowEvidenceMarkup(row,includeInterval=true){return (row?.report_kind==='author_reported'?'<small class="author-row-label">作者报告 · 未独立复测</small>':'')+(includeInterval&&row?.confidence_interval?`<small style="display:block">${esc(hubIntervalLabel(row))}</small>`:'')+hubRowSourceMarkup(row)+hubRowDateMarkup(row)}
 
 function hubCurrentBoard() {return hubModel.boards.find(board=>board.id===hubState.board)}
 function syncHubControls(root) {
   const boardSelect=root.querySelector('[data-hub-field="board"]'), harnessSelect=root.querySelector('[data-hub-field="harness"]');
   const boards=hubModel.boards.filter(board=>board.assessment===hubState.assessment);
   if(!boards.some(board=>board.id===hubState.board))hubState.board=boards[0]?.id||'';
+  if(hubState.sortBoard!==hubState.board){hubState.sort=hubPreferredSort(hubCurrentBoard());hubState.sortBoard=hubState.board}
+  const sortSelect=root.querySelector('[data-hub-field="sort"]');if(sortSelect){sortSelect.innerHTML=hubOptions([['score-desc','数值从高到低'],['score-asc','数值从低到高'],...(metricDirection(hubCurrentBoard())==='target'&&metricTarget(hubCurrentBoard())!==null?[['target','最接近目标']]:[]),['model','模型名称']],hubState.sort);sortSelect.value=hubState.sort}
   if(boardSelect)boardSelect.innerHTML=hubOptions(boards.map(board=>[board.id,board.name]),hubState.board);
   const harnesses=[...new Set(hubModel.rows.filter(row=>row.board_id===hubState.board).map(row=>row.harness))].sort();
   if(hubState.harness&&!harnesses.includes(hubState.harness))hubState.harness='';
@@ -556,7 +627,7 @@ function hubComparisonMarkup() {
   const table=assessment=>{
     const boards=matrixBoards.filter(board=>board.assessment===assessment);
     if(!boards.length)return '';
-    return `<h4 class="hub-matrix-title">${assessment==='safeguards'?'安全与拒答 / SAFEGUARDS':'科学能力 / CAPABILITIES'}</h4><div class="hub-table-wrap" tabindex="0" role="region" aria-label="${assessment==='safeguards'?'安全':'能力'}逐基准配置对比，可横向滚动"><table class="hub-matrix"><caption class="sr-only">逐基准配置对比；空白项表示没有报告</caption><thead><tr><th scope="col">评测 · 指标</th>${selected.map(row=>`<th scope="col">${esc(row.model)}<small>${esc(hubHarnessLabel(row))}</small></th>`).join('')}</tr></thead><tbody>${boards.map(board=>`<tr><th scope="row">${hubSourceLink(board.source_url,board.name)}<small>${esc(board.metric)}${board.unit?' · '+esc(board.unit):''}</small></th>${selected.map(config=>{
+    return `<h4 class="hub-matrix-title">${assessment==='safeguards'?'安全与拒答 / SAFEGUARDS':'科学能力 / CAPABILITIES'}</h4><div class="hub-table-wrap" tabindex="0" role="region" aria-label="${assessment==='safeguards'?'安全':'能力'}逐基准配置对比，可横向滚动"><table class="hub-matrix"><caption class="sr-only">逐基准配置对比；空白项表示没有报告</caption><thead><tr><th scope="col">评测 · 指标</th>${selected.map(row=>`<th scope="col">${esc(row.model)}<small>${esc(hubHarnessLabel(row))}</small></th>`).join('')}</tr></thead><tbody>${boards.map(board=>`<tr><th scope="row">${hubSourceLink(board.source_url,board.name)}<small>${esc(board.metric)}${board.unit?' · '+esc(board.unit):''}</small><small class="metric-direction">${esc(metricDirectionLabel(board))}</small></th>${selected.map(config=>{
       const row=hubModel.rows.find(row=>row.board_id===board.id&&hubConfigurationKey(row)===hubConfigurationKey(config));
       return `<td>${esc(hubScore(row))}${hubRowEvidenceMarkup(row)}</td>`;
     }).join('')}</tr>`).join('')}</tbody></table></div>`;
@@ -586,9 +657,9 @@ function paintHubResults(root) {
   const metric=board.metric||'原报告指标';
   const numeric=rows.filter(row=>row.score!==null);
   const max=Math.max(...numeric.map(row=>Math.abs(row.score)),1);
-  output.innerHTML=`<div class="hub-board-heading"><div><p class="eyebrow">${esc(board.assessment==='safeguards'?'SAFEGUARDS':'CAPABILITIES')} / ${esc(board.version||'版本见来源')}</p><h3>${esc(board.name)}</h3><p>${esc(metric)}${unit?' · '+esc(unit):''}${board.evaluation_count!=null?' · '+esc(board.evaluation_count)+' 项评估':''}</p></div><div class="hub-source-meta">${hubSourceLink(board.source_url||source.url,source.name||'查看原始成绩')}<span>${esc(hubBoardDateLabel(board))}</span>${board.data_updated_at||source.data_updated_at?`<span>源更新 ${esc(String(board.data_updated_at||source.data_updated_at).slice(0,10))}</span>`:''}<span>本站核对 ${esc(String(board.retrieved_at||source.retrieved_at||data?.evaluation_hub?.updated_at||'未披露').slice(0,10))}</span></div></div><details class="hub-protocol"><summary>查看评分口径、运行协议与覆盖范围 <span aria-hidden="true">＋</span></summary><p>${esc(board.metric_note||'按来源报告的单项指标展示；模型与运行框架共同构成一个配置。')}</p><p>${esc(protocol)}</p>${source.notes?.length?`<ul>${source.notes.map(note=>`<li>${esc(note)}</li>`).join('')}</ul>`:''}<p>表中的套件覆盖是该配置在来源整套评测中的报告范围，不是当前基准的成功次数。缺失成绩不按 0 计分。</p></details>${rows.length?`<div class="hub-table-wrap" tabindex="0" role="region" aria-label="${esc(board.name)} 成绩表，可横向滚动"><table class="hub-score-table"><caption class="sr-only">${esc(board.name)} · 相同来源、版本与协议下的公开成绩</caption><thead><tr><th scope="col">对比</th><th scope="col">序</th><th scope="col">模型 / 提供商</th><th scope="col">运行框架</th><th scope="col" class="hub-score-cell">${esc(metric)}${unit?' ('+esc(unit)+')':''}</th><th scope="col">证据与覆盖</th></tr></thead><tbody>${rows.map((row,index)=>{
+  output.innerHTML=`<div class="hub-board-heading"><div><p class="eyebrow">${esc(board.assessment==='safeguards'?'SAFEGUARDS':'CAPABILITIES')} / ${esc(board.version||'版本见来源')}</p><h3>${esc(board.name)}</h3><p class="metric-direction">${esc(metricDirectionLabel(board))}</p><p>${esc(metric)}${unit?' · '+esc(unit):''}${board.evaluation_count!=null?' · '+esc(board.evaluation_count)+' 项评估':''}</p></div><div class="hub-source-meta">${hubSourceLink(board.source_url||source.url,source.name||'查看原始成绩')}<span>${esc(hubBoardDateLabel(board))}</span>${board.data_updated_at||source.data_updated_at?`<span>源更新 ${esc(String(board.data_updated_at||source.data_updated_at).slice(0,10))}</span>`:''}<span>本站核对 ${esc(String(board.retrieved_at||source.retrieved_at||data?.evaluation_hub?.updated_at||'未披露').slice(0,10))}</span></div></div>${authorReportMarkup(board)}<details class="hub-protocol"><summary>查看评分口径、运行协议与覆盖范围 <span aria-hidden="true">＋</span></summary><p>${esc(board.metric_note||'按来源报告的单项指标展示；模型与运行框架共同构成一个配置。')}</p><p>${esc(protocol)}</p>${source.notes?.length?`<ul>${source.notes.map(note=>`<li>${esc(note)}</li>`).join('')}</ul>`:''}<p>表中的套件覆盖是该配置在来源整套评测中的报告范围，不是当前基准的成功次数。缺失成绩不按 0 计分。</p></details>${rows.length?`<div class="hub-table-wrap" tabindex="0" role="region" aria-label="${esc(board.name)} 成绩表，可横向滚动"><table class="hub-score-table"><caption class="sr-only">${esc(board.name)} · 相同来源、版本与协议下的公开成绩</caption><thead><tr><th scope="col">对比</th><th scope="col">序</th><th scope="col">模型 / 提供商</th><th scope="col">运行框架</th><th scope="col" class="hub-score-cell">${esc(metric)}${unit?' ('+esc(unit)+')':''}</th><th scope="col">证据与覆盖</th></tr></thead><tbody>${rows.map((row,index)=>{
     const key=hubConfigurationKey(row), selected=hubState.selected.has(key), score=hubScore(row,false), width=row.score===null?0:Math.max(0,Math.min(100,100*Math.abs(row.score)/max));
-    return `<tr${selected?' class="hub-selected-row"':''}><td><button class="hub-compare-toggle" data-hub-compare="${esc(key)}" aria-pressed="${selected}" aria-label="${esc((selected?'取消对比 ':'对比 ')+row.model+' / '+hubHarnessLabel(row))}">${selected?'✓':'＋'}</button></td><td class="hub-rank">${row.score===null?'—':index+1}</td><th scope="row"><span class="hub-model-name">${brandBadge(row.model)}</span><small>${esc(row.provider)}</small><small class="hub-mobile-meta">${esc(hubHarnessLabel(row))} · ${esc(hubCoverage(row))}</small>${row.source_note||Object.hasOwn(row,'run_date')||row.reported_score_date?`<span class="hub-mobile-meta">${hubRowEvidenceMarkup(row)}</span>`:''}</th><td><span class="hub-harness">${esc(hubHarnessLabel(row))}</span></td><td class="hub-score-cell"><strong>${esc(score)}</strong>${row.score===null?'<small>未报告</small>':`<span class="hub-score-bar" aria-hidden="true"><i style="width:${width}%"></i></span>`}</td><td class="hub-evidence"><span>${esc(hubCoverage(row))}</span>${hubSourceLink(row.source_url)}${hubRowEvidenceMarkup(row)}${row.secondary?.length?`<small>${row.secondary.map(item=>`${esc(item.label)} ${esc(hubScore({score:item.value,unit:item.unit,decimals:item.decimals}))}`).join(' · ')}</small>`:''}</td></tr>`;
+    return `<tr${selected?' class="hub-selected-row"':''}><td><button class="hub-compare-toggle" data-hub-compare="${esc(key)}" aria-pressed="${selected}" aria-label="${esc((selected?'取消对比 ':'对比 ')+row.model+' / '+hubHarnessLabel(row))}">${selected?'✓':'＋'}</button></td><td class="hub-rank">${row.score===null?'—':index+1}</td><th scope="row"><span class="hub-model-name">${brandBadge(row.model)}</span><small>${esc(row.provider)}</small><small class="hub-mobile-meta">${esc(hubHarnessLabel(row))} · ${esc(hubCoverage(row))}</small>${row.source_note||Object.hasOwn(row,'run_date')||row.reported_score_date?`<span class="hub-mobile-meta">${hubRowEvidenceMarkup(row)}</span>`:''}</th><td><span class="hub-harness">${esc(hubHarnessLabel(row))}</span></td><td class="hub-score-cell"><strong>${esc(score)}</strong>${row.score===null?'<small>未报告</small>':`<span class="hub-score-bar" aria-hidden="true"><i style="width:${width}%"></i></span>`}</td><td class="hub-evidence"><span>${esc(hubCoverage(row))}</span>${hubSourceLink(row.source_url)}${hubRowEvidenceMarkup(row)}${row.secondary?.length?`<small>${row.secondary.map(item=>`${esc(item.label)} ${esc(hubScore({score:item.value,unit:item.unit,decimals:item.decimals}))}${item.direction&&item.direction!=='none'?' '+esc(metricDirectionLabel(item)):''}`).join(' · ')}</small>`:''}</td></tr>`;
   }).join('')}</tbody></table></div>`:'<div class="hub-empty"><strong>没有匹配的配置</strong><p>调整模型关键词或运行框架，或重置筛选查看本评测的全部成绩。</p><button class="hub-text-button" data-hub-reset>重置筛选 ↺</button></div>'}<p class="hub-footnote">序号表示当前筛选与排序中的位置。仅在本表协议内比较；这里汇集公开报告，本站未复测这些模型。${board.legacy?'原报告未把模型与框架拆为独立字段，系统配置按原文保留。':''}</p>`;
   if(comparison)comparison.innerHTML=hubComparisonMarkup();
   const notice=root.querySelector('[data-hub-notice]');
@@ -597,13 +668,13 @@ function paintHubResults(root) {
   renderScoreVisuals();
 }
 function hubCsv(rows) {
-  const headers=['benchmark','model','provider','harness','score','metric','unit','version','assessment','score_date','retrieved_at','source_url','protocol','suite_coverage','status','configuration','reasoning_effort','trial_count','standard_error','standard_error_unit','passes','source_note','run_date','reported_score_date','source_updated_at','evaluations_observed','evaluations_total','evaluation_coverage_unit','confidence_interval_lower','confidence_interval_upper','confidence_level','confidence_interval_method'];
+  const headers=['benchmark','model','provider','harness','score','metric','unit','version','assessment','score_date','retrieved_at','source_url','protocol','suite_coverage','status','configuration','reasoning_effort','trial_count','standard_error','standard_error_unit','passes','source_note','run_date','reported_score_date','source_updated_at','evaluations_observed','evaluations_total','evaluation_coverage_unit','confidence_interval_lower','confidence_interval_upper','confidence_level','confidence_interval_method','metric_direction','metric_target','secondary_metrics_json','report_kind','source_revision','source_table','source_sha256'];
   const escape=value=>{
     let text=String(value??'');
     if(typeof value!=='number'&&/^[=+@\-\t\r]/.test(text))text="'"+text;
     return '"'+text.replaceAll('"','""')+'"';
   };
-  return [headers,...rows.map(row=>{const board=hubModel.boards.find(board=>board.id===row.board_id),error=scoreChartUncertainty(row,board),interval=row.confidence_interval,coverage=row.evaluation_coverage;return [row.benchmark_name,row.model,row.provider,row.harness,row.score,row.metric,row.unit,row.version,row.assessment,row.score_date,row.retrieved_at,row.source_url,row.protocol,hubCoverage(row),row.score===null?'not_reported':'reported',row.configuration_label,row.effort,row.trial_count,error?.value,error?.unit,row.passes,row.source_note,row.run_date,row.reported_score_date,row.data_updated_at||board?.data_updated_at||board?.source?.data_updated_at,coverage?.observed,coverage?.total,coverage?.unit,interval?.lower,interval?.upper,interval?.level,interval?.method]})].map(row=>row.map(escape).join(',')).join('\r\n');
+  return [headers,...rows.map(row=>{const board=hubModel.boards.find(board=>board.id===row.board_id),error=scoreChartUncertainty(row,board),interval=row.confidence_interval,coverage=row.evaluation_coverage;return [row.benchmark_name,row.model,row.provider,row.harness,row.score,row.metric,row.unit,row.version,row.assessment,row.score_date,row.retrieved_at,row.source_url,row.protocol,hubCoverage(row),row.score===null?'not_reported':'reported',row.configuration_label,row.effort,row.trial_count,error?.value,error?.unit,row.passes,row.source_note,row.run_date,row.reported_score_date,row.data_updated_at||board?.data_updated_at||board?.source?.data_updated_at,coverage?.observed,coverage?.total,coverage?.unit,interval?.lower,interval?.upper,interval?.level,interval?.method,metricDirection(row.direction?row:board),metricTarget(row.target!=null?row:board),JSON.stringify(row.secondary||[]),row.report_kind||board?.report_kind,row.source_revision||board?.source_revision,typeof(row.source_table||board?.source_table)==='object'?JSON.stringify(row.source_table||board?.source_table):row.source_table||board?.source_table,row.source_sha256||board?.source_sha256]})].map(row=>row.map(escape).join(',')).join('\r\n');
 }
 function hubExportDocument(rows,board){
   const exportedBoard=board?.task_matrix?{...board,task_matrix:{tasks:board.task_matrix.tasks,rows:Object.fromEntries(rows.flatMap(row=>{const id=row.source_row_id;return id&&board.task_matrix.rows[id]?[[id,board.task_matrix.rows[id]]]:[]}))}}:board;
@@ -654,7 +725,7 @@ function renderEvaluationHub() {
     if(target.dataset.hubAssessment){updateAssessment(target.dataset.hubAssessment);paintHubResults(root)}
     if(target.dataset.hubBoard){hubState.board=target.dataset.hubBoard;hubState.query='';hubState.harness='';root.querySelector('[data-hub-field="query"]').value='';updateAssessment(hubCurrentBoard()?.assessment||'capabilities');paintHubResults(root)}
     if(target.hasAttribute('data-hub-reset')){
-      hubState.query='';hubState.harness='';hubState.sort='score-desc';
+      hubState.query='';hubState.harness='';hubState.sort=hubPreferredSort(hubCurrentBoard());
       root.querySelector('[data-hub-field="query"]').value='';root.querySelector('[data-hub-field="sort"]').value=hubState.sort;
       syncHubControls(root);paintHubResults(root);
     }
@@ -711,7 +782,7 @@ function renderTaxonomy(){const t=data.taxonomy||{},q=t.question_count||{},subje
 function renderActiveFilters(){
   const active=Object.entries(filterFields).flatMap(([key,name])=>{
     const value=filterElement(key).value.trim();
-    return value?[{key,text:`${name} · ${key==='search'?value:key==='industry'?(companyRoleLabels[value]||label(value)):label(value)}`}]:[];
+    return value?[{key,text:`${name} · ${key==='search'?value:key==='industry'?(companyRoleLabels[value]||label(value)):key==='result-status'?resultCoverageLabel(value):label(value)}`}]:[];
   });
   if(selectedSuite)active.push({key:'selectedSuite',text:`套件 · ${selectedSuite.name}`});
   if(extraFilter)active.push({key:'extraFilter',text:`分类 · ${label(extraFilter.key)}`});
@@ -722,10 +793,10 @@ function renderActiveFilters(){
 function applyFilters(){
   if(!data)return;
   const query=$('search').value.trim().toLowerCase();
-  const domain=$('domain-filter').value,cap=$('family-filter').value,mode=$('mode-filter').value,access=$('access-filter').value,year=$('year-filter').value,company=$('company-filter').value,industry=$('industry-filter').value;
+  const domain=$('domain-filter').value,cap=$('family-filter').value,mode=$('mode-filter').value,access=$('access-filter').value,year=$('year-filter').value,company=$('company-filter').value,industry=$('industry-filter').value,resultStatus=$('result-status-filter').value;
   filtered=data.benchmarks.filter(b=>{
     const c=b.classification;
-    return (!domain||b.domain===domain)&&(!cap||c.capability_axes.includes(cap))&&(!mode||c.evaluation_modes.includes(mode))&&(!access||c.data_access===access)&&(!year||String(b.year)===year)&&(!industry||b.major_company_status?.roles?.[industry]?.length)&&(!company||b.major_company_signals?.some(s=>s.company_family===company&&(!industry||s.context===industry)))&&(!selectedSuite||selectedSuite.benchmarks.includes(b.id))&&(!extraFilter||(Array.isArray(c[extraFilter.field])?c[extraFilter.field].includes(extraFilter.key):c[extraFilter.field]===extraFilter.key))&&(!query||b._search.includes(query));
+    return (!resultStatus||benchmarkResultCoverage(b).status===resultStatus)&&(!domain||b.domain===domain)&&(!cap||c.capability_axes.includes(cap))&&(!mode||c.evaluation_modes.includes(mode))&&(!access||c.data_access===access)&&(!year||String(b.year)===year)&&(!industry||b.major_company_status?.roles?.[industry]?.length)&&(!company||b.major_company_signals?.some(s=>s.company_family===company&&(!industry||s.context===industry)))&&(!selectedSuite||selectedSuite.benchmarks.includes(b.id))&&(!extraFilter||(Array.isArray(c[extraFilter.field])?c[extraFilter.field].includes(extraFilter.key):c[extraFilter.field]===extraFilter.key))&&(!query||b._search.includes(query));
   });
   const sort=$('sort-filter').value;
   filtered.sort((a,b)=>sort==='year'?(b.year||0)-(a.year||0)||a.name.localeCompare(b.name):sort==='domain'?a.domain.localeCompare(b.domain)||a.name.localeCompare(b.name):sort==='name'?a.name.localeCompare(b.name):(Number(!!b.integration.runner)-Number(!!a.integration.runner))||(b.organizations.length-a.organizations.length)||a.name.localeCompare(b.name));
@@ -734,13 +805,14 @@ function applyFilters(){
   renderResults();
 }
 function renderResults(){
+  renderResultCoverageSummary();
   $('result-count').textContent=fmt(filtered.length);
   $('result-label').textContent=selectedSuite?selectedSuite.name:extraFilter?label(extraFilter.key):'全部评测';
   $('result-context').textContent=`${fmt(filtered.length)} / ${fmt(data.benchmark_count)} 条 · 规则分类，保留原始证据`;
   const slice=filtered.slice((page-1)*pageSize,page*pageSize);
   $('benchmark-list').innerHTML=slice.length?slice.map((b,i)=>{
     const status=b.integration.status,c=b.classification;
-    return `<article class="benchmark-card"><div class="card-topline"><span class="card-domain">${esc(label(b.domain))}</span><span class="card-year">${esc(b.year||'年份待核实')}</span><span class="card-index">${String((page-1)*pageSize+i+1).padStart(4,'0')}</span></div><button class="benchmark-title" data-detail="${esc(b.id)}">${esc(b.name)}</button><p class="benchmark-description">${esc(b.description||purposeText(b))}</p><div class="chips card-capabilities">${c.capability_axes.slice(0,3).map(x=>chip(label(x),'capability')).join('')}</div><div class="chips card-signals">${evaluationResultCount(b.id)?`<button class="chip result-chip" data-results-benchmark="${esc(b.id)}">${fmt(evaluationResultCount(b.id))} 条公开成绩 ↗</button>`:''}${countChip(b)}${majorSignalChips(b)}</div><div class="card-footer">${chip(label(status),['runnable','partially_runnable'].includes(status)?'runner':'access')}<button class="detail-button" data-detail="${esc(b.id)}">查看详情 <span aria-hidden="true">↗</span></button></div></article>`;
+    return `<article class="benchmark-card"><div class="card-topline"><span class="card-domain">${esc(label(b.domain))}</span><span class="card-year">${esc(b.year||'年份待核实')}</span><span class="card-index">${String((page-1)*pageSize+i+1).padStart(4,'0')}</span></div><button class="benchmark-title" data-detail="${esc(b.id)}">${esc(b.name)}</button><p class="benchmark-description">${esc(b.description||purposeText(b))}</p><div class="chips card-capabilities">${c.capability_axes.slice(0,3).map(x=>chip(label(x),'capability')).join('')}</div>${benchmarkResultCoverageMarkup(b)}<div class="chips card-signals">${evaluationResultCount(b.id)?`<button class="chip result-chip" data-results-benchmark="${esc(b.id)}">${fmt(evaluationResultCount(b.id))} 条公开成绩 ↗</button>`:''}${countChip(b)}${majorSignalChips(b)}</div><div class="card-footer">${chip(label(status),['runnable','partially_runnable'].includes(status)?'runner':'access')}<button class="detail-button" data-detail="${esc(b.id)}">查看详情 <span aria-hidden="true">↗</span></button></div></article>`;
   }).join(''):'<div class="empty-state"><span class="empty-symbol" aria-hidden="true">∅</span><strong>没有匹配的评测</strong><p>试试其他关键词，或移除当前筛选条件。</p><button class="reset-button" data-reset-all>清除全部筛选 ↗</button></div>';
   const pages=Math.max(1,Math.ceil(filtered.length/pageSize));
   $('page-label').textContent=`${page} / ${pages}`;
@@ -777,7 +849,7 @@ function cardSpec(b){const example=scenarioExample(b), completeness=metadataComp
 function demoBlock(b){const example=scenarioExample(b),reviewed=example.kind==='task_overview',metric=(b.metrics||[]).slice(0,4).map(x=>label(x)).join('、')||'上游未明确';return `<div class="demo-grid"><div class="demo-card demo-input"><div class="demo-label"><span>${reviewed?'INPUT':'METADATA'}</span><small>${reviewed?'输入说明':'登记字段'}</small></div><pre>${esc(example.input)}</pre></div><div class="demo-arrow" aria-hidden="true">→</div><div class="demo-card demo-output"><div class="demo-label"><span>OUTPUT</span><small>${reviewed?'输出说明':'待逐条核实'}</small></div><pre>${esc(`${example.output}\n\n登记指标：${metric}`)}</pre></div></div><p class="demo-disclaimer">${reviewed?'这是依据该条目来源整理的任务流程说明，不是原始题目、金标准答案或官方样例。':'此条目尚未补充经核实的输入输出样例；领域标签不足以推断题目格式或答案。'} 具体字段、评分协议与版本请核对下方官方来源。</p>`}
 function infoGrid(items){return `<div class="info-grid">${items.map(([k,v])=>`<div class="info-cell"><span>${esc(k)}</span><strong>${esc(v)}</strong></div>`).join('')}</div>`}
 function majorSignalBlock(b){const signals=b.major_company_signals||[];return companyFields(b)+'<p class="evidence-footnote">官方报告使用表示已公开报告该基准成绩；第三方测试模型不能证明公司采用。发布关系包含联合发布，不自动等同于独立自研。</p>'+signals.map(o=>'<div class="company-evidence"><strong>'+esc(o.organization)+' · '+esc(companyRoleLabels[o.context]||o.context)+'</strong><p>'+esc(o.evidence||'证据说明待补')+'</p><small>核对日期：'+esc(o.checked_at||'未登记')+'</small> '+(safeUrl(o.source_url)?'<a href="'+esc(safeUrl(o.source_url))+'" target="_blank" rel="noreferrer">核对来源 ↗</a>':'')+'</div>').join('')}
-function openDetail(id){const b=data.benchmarks.find(x=>x.id===id);if(!b)return;previousFocus=document.activeElement;const c=b.classification;const links=[['论文',b.paper.url],['官方源码',b.official.repository],['官方数据',b.official.dataset],['项目主页',b.official.homepage]].filter(x=>safeUrl(x[1]));const stages=(c.workflow_stages||[]).map(label).join(' → ')||'未明确';const summarySource=b.description?.trim()?'已登记摘要':'任务字段摘要';$('drawer-content').innerHTML=`<p class="eyebrow">BENCHMARK / ${esc(b.id)}</p><h2 id="detail-title">${esc(b.name)}</h2><p class="detail-lede">${esc(purposeText(b))}</p><div class="detail-platform-actions"><button class="button button-primary" data-eval-start="${esc(b.id)}">开始评测 →</button>${evaluationResultCount(b.id)?`<button class="button button-ghost" data-results-benchmark="${esc(b.id)}">查看 ${fmt(evaluationResultCount(b.id))} 条公开成绩 ↗</button>`:'<span>暂未收录公开成绩，可运行后提交。</span>'}</div><div class="chips detail-tags">${chip(label(b.domain))}${b.subdomain?chip(b.subdomain.replaceAll('-',' ')):''}${chip(b.year||'年份待核实')}${chip(label(b.integration.status),'runner')}${b.question_count!=null?chip(`${fmt(b.question_count)} （规模提取值）`,'count-chip'):''}${chip(summarySource,'inferred')}</div><div class="detail-note"><strong>阅读提示：</strong>先看“测量对象”和输入输出示意，再核对官方来源、版本、许可证与访问边界。此目录展示元数据与评测入口，不提供受限数据下载，也不代表所有评测均已接入本地执行。</div>${section('一眼看懂',infoGrid([['科学域',label(b.domain)],['学科分类',label(c.domain_family||b.domain)],['评测对象',b.task_types?.[0]||'科学任务'],['规模提取值（见原始单位）',b.question_count==null?'未提取':fmt(b.question_count)],['工作流',stages],['摘要来源',summarySource],['元数据完整度',`${metadataCompleteness(b)}%`],['证据等级',label(c.evidence_tier||'metadata_only')]]))}${section('任务定义与规模',`<p>${esc(b.description||purposeText(b))}</p><p class="size-line"><strong>规模：</strong>${esc(formatSize(b.size))}</p>`)}${section('输入 → 输出示意',demoBlock(b))}${section('能力与科研流程',`<div class="chips">${(c.capability_axes||[]).map(x=>chip(label(x),'capability')).join('')}</div><p class="detail-flow">${(c.workflow_stages||[]).map(label).map(esc).join(' → ')||'上游未声明工作流阶段'}</p>`)}${section('输入模态与评测范式',`<p>${(b.modalities||[]).map(label).map(esc).join(' · ')||'上游未明确'}</p><div class="chips detail-mode-chips">${(c.evaluation_modes||[]).map(x=>chip(label(x))).join('')}</div>`)}${section('评测指标',`<div class="metric-list">${(b.metrics||[]).map(x=>`<span>${esc(label(x))}</span>`).join('')||'<span>上游尚未明确，使用前需核对。</span>'}</div>`)}${section('访问与许可证',`<p><strong>${esc(label(c.data_access))}</strong> · ${esc(label(c.license_class))}</p><p class="license-copy">${esc(b.license||'上游未声明可复用许可证。')}</p>`)}${section('公司关系与证据',majorSignalBlock(b))}${section('官方来源',links.length?`<ul class="source-list">${links.map(([n,u])=>`<li><span>${esc(n)}</span><a href="${esc(safeUrl(u))}" target="_blank" rel="noreferrer">打开官方入口 ↗</a></li>`).join('')}</ul>`:'<p>暂无可直接打开的官方入口。</p>')}${b.integration.runner?section('本地调用入口',`<code>${esc(b.integration.runner)}</code><p>请在私有评测仓库中执行；部分适配仅覆盖已声明子任务。</p>`):''}${section('机构证据',b.organizations.length?b.organizations.map(o=>`<div class="organization-row"><strong>${esc(o.organization)}</strong> <span>· ${esc(label(o.relationship))}</span> ${safeUrl(o.source_url)?`<a href="${esc(safeUrl(o.source_url))}" target="_blank" rel="noreferrer">来源 ↗</a>`:''}</div>`).join('')+'<p class="evidence-footnote">模型被论文作者测试，不等于该公司内部采用此基准。</p>':'<p>暂无已收录的公司或机构关系证据。</p>')}<div class="detail-note">分类版本 ${esc(c.version||'1.0.0')} · 规则派生，未经逐条人工认证。无法据此推断难度等级或模型综合排名。</div>`;document.querySelector('.drawer-panel').scrollTop=0;$('detail-drawer').classList.add('open');$('detail-drawer').setAttribute('aria-hidden','false');document.body.style.overflow='hidden';document.querySelector('.drawer-close').focus()}
+function openDetail(id){const b=data.benchmarks.find(x=>x.id===id);if(!b)return;previousFocus=document.activeElement;const c=b.classification;const links=[['论文',b.paper.url],['官方源码',b.official.repository],['官方数据',b.official.dataset],['项目主页',b.official.homepage]].filter(x=>safeUrl(x[1]));const stages=(c.workflow_stages||[]).map(label).join(' → ')||'未明确';const summarySource=b.description?.trim()?'已登记摘要':'任务字段摘要';$('drawer-content').innerHTML=`<p class="eyebrow">BENCHMARK / ${esc(b.id)}</p><h2 id="detail-title">${esc(b.name)}</h2><p class="detail-lede">${esc(purposeText(b))}</p><div class="detail-platform-actions"><button class="button button-primary" data-eval-start="${esc(b.id)}">开始评测 →</button>${evaluationResultCount(b.id)?`<button class="button button-ghost" data-results-benchmark="${esc(b.id)}">查看 ${fmt(evaluationResultCount(b.id))} 条公开成绩 ↗</button>`:`<span>${esc(benchmarkResultCoverage(b).label||'作者成绩待核对')} · 不自动运行实验。</span>`}</div><div class="chips detail-tags">${chip(label(b.domain))}${b.subdomain?chip(b.subdomain.replaceAll('-',' ')):''}${chip(b.year||'年份待核实')}${chip(label(b.integration.status),'runner')}${b.question_count!=null?chip(`${fmt(b.question_count)} （规模提取值）`,'count-chip'):''}${chip(summarySource,'inferred')}</div><div class="detail-note"><strong>阅读提示：</strong>先看“测量对象”和输入输出示意，再核对官方来源、版本、许可证与访问边界。此目录展示元数据与评测入口，不提供受限数据下载，也不代表所有评测均已接入本地执行。</div>${section('一眼看懂',infoGrid([['科学域',label(b.domain)],['学科分类',label(c.domain_family||b.domain)],['评测对象',b.task_types?.[0]||'科学任务'],['规模提取值（见原始单位）',b.question_count==null?'未提取':fmt(b.question_count)],['工作流',stages],['摘要来源',summarySource],['元数据完整度',`${metadataCompleteness(b)}%`],['证据等级',label(c.evidence_tier||'metadata_only')]]))}${section('作者成绩与收录状态',benchmarkResultCoverageMarkup(b,true))}${section('任务定义与规模',`<p>${esc(b.description||purposeText(b))}</p><p class="size-line"><strong>规模：</strong>${esc(formatSize(b.size))}</p>`)}${section('输入 → 输出示意',demoBlock(b))}${section('能力与科研流程',`<div class="chips">${(c.capability_axes||[]).map(x=>chip(label(x),'capability')).join('')}</div><p class="detail-flow">${(c.workflow_stages||[]).map(label).map(esc).join(' → ')||'上游未声明工作流阶段'}</p>`)}${section('输入模态与评测范式',`<p>${(b.modalities||[]).map(label).map(esc).join(' · ')||'上游未明确'}</p><div class="chips detail-mode-chips">${(c.evaluation_modes||[]).map(x=>chip(label(x))).join('')}</div>`)}${section('评测指标',`<div class="metric-list">${(b.metrics||[]).map(x=>`<span>${esc(label(x))}</span>`).join('')||'<span>上游尚未明确，使用前需核对。</span>'}</div>`)}${section('访问与许可证',`<p><strong>${esc(label(c.data_access))}</strong> · ${esc(label(c.license_class))}</p><p class="license-copy">${esc(b.license||'上游未声明可复用许可证。')}</p>`)}${section('公司关系与证据',majorSignalBlock(b))}${section('官方来源',links.length?`<ul class="source-list">${links.map(([n,u])=>`<li><span>${esc(n)}</span><a href="${esc(safeUrl(u))}" target="_blank" rel="noreferrer">打开官方入口 ↗</a></li>`).join('')}</ul>`:'<p>暂无可直接打开的官方入口。</p>')}${b.integration.runner?section('本地调用入口',`<code>${esc(b.integration.runner)}</code><p>请在私有评测仓库中执行；部分适配仅覆盖已声明子任务。</p>`):''}${section('机构证据',b.organizations.length?b.organizations.map(o=>`<div class="organization-row"><strong>${esc(o.organization)}</strong> <span>· ${esc(label(o.relationship))}</span> ${safeUrl(o.source_url)?`<a href="${esc(safeUrl(o.source_url))}" target="_blank" rel="noreferrer">来源 ↗</a>`:''}</div>`).join('')+'<p class="evidence-footnote">模型被论文作者测试，不等于该公司内部采用此基准。</p>':'<p>暂无已收录的公司或机构关系证据。</p>')}<div class="detail-note">分类版本 ${esc(c.version||'1.0.0')} · 规则派生，未经逐条人工认证。无法据此推断难度等级或模型综合排名。</div>`;document.querySelector('.drawer-panel').scrollTop=0;$('detail-drawer').classList.add('open');$('detail-drawer').setAttribute('aria-hidden','false');document.body.style.overflow='hidden';document.querySelector('.drawer-close').focus()}
 function closeDetail(){$('detail-drawer').classList.remove('open');$('detail-drawer').setAttribute('aria-hidden','true');document.body.style.overflow='';previousFocus?.focus()}
 // Public, browser-local planning and contribution flow. No credentials or cloud execution.
 const evaluationPlanState={selectedId:'terminal-bench-science-scientific-agent-benchmark',plan:[],versions:{},model:'',harness:'',version:'',query:'',submission:[],importGeneration:0,bound:false};
@@ -944,18 +1016,18 @@ function paintBenchmarkOverview(board){
   const retrieved=String(board.retrieved_at||'').slice(0,10),updated=String(board.data_updated_at||'').slice(0,10);
   $('benchmark-title').textContent=tbs?'Terminal-Bench-Science':board.name;
   $('benchmark-breadcrumb-domain').textContent=label(domain).toUpperCase();
-  $('benchmark-kind').innerHTML=`<i aria-hidden="true"></i>${official?'ACADEMIC · OFFICIAL':board.assessment==='safeguards'?'SAFEGUARDS':board.id.endsWith('-aa')?'INDEPENDENT · AA':'REPORTED RESULTS'}`;
+  $('benchmark-kind').innerHTML=`<i aria-hidden="true"></i>${official?'ACADEMIC · OFFICIAL':board.assessment==='safeguards'?'SAFEGUARDS':board.id.endsWith('-aa')?'INDEPENDENT · AA':board.report_kind==='author_reported'?'AUTHORS · REPORTED':'REPORTED RESULTS'}`;
   $('benchmark-updated').textContent=`本站核对 ${retrieved||'未披露'}${updated?' · 源更新 '+updated:''}`;
   $('benchmark-version').textContent=official?'v0.1.0 · 70 TASKS':board.version||'版本见来源';
   const source=$('benchmark-source-link');source.href=safeUrl(board.source_url||board.source?.url)||'#benchmark-methodology';
   const run=$('benchmark-run-link');
   if(benchmark){run.hidden=false;run.setAttribute('data-eval-start',benchmark.id)}else run.hidden=true;
   $('benchmark-description').textContent=tbs?'由科学家贡献的真实科研工作流，覆盖五个科学领域。':board.assessment==='safeguards'?'安全与拒答单列，连同模型和运行框架一起阅读。':'逐项查看模型表现，保留每个评测自己的指标与运行协议。';
-  const leaders=hubModel.rows.filter(row=>row.board_id===board.id&&row.score!==null).sort((a,b)=>b.score-a.score).slice(0,3);
-  $('benchmark-summary').innerHTML=leaders.length?`${esc(retrieved?'截至 '+retrieved+' 本站核对，':'当前来源报告，')}${leaders.map(row=>`<span class="benchmark-leader">${brandBadge(row.model)} <span class="benchmark-harness">(${esc(hubHarnessLabel(row))})</span> <strong>${esc(hubScore(row))}</strong></span>`).join('；')}。<span class="benchmark-summary-note">同一来源内比较；本站未复测。</span>`:'此来源尚无已核实的数值成绩。';
+  const leaders=hubLeaders(board);
+  $('benchmark-summary').innerHTML=leaders.length?`${esc(retrieved?'截至 '+retrieved+' 本站核对，':'当前来源报告，')}${leaders.map(row=>`<span class="benchmark-leader">${brandBadge(row.model)} <span class="benchmark-harness">(${esc(hubHarnessLabel(row))})</span> <strong>${esc(hubScore(row))}</strong></span>`).join('；')}。<span class="benchmark-summary-note">同一来源内比较；本站未复测。</span>`:(metricDirection(board)==='none'?'此指标未定义优劣方向，按来源分别阅读。':'此来源尚无已核实的数值成绩。');
   $('benchmark-background').textContent=tbs?'Terminal-Bench-Science 是面向科研 Agent 的科学终端工作流评测。正式 v0.1.0 包含 70 项专家贡献任务，覆盖生命、物理、数学、工程和地球科学；任务产物由各任务的 verifier 检验。开发分支的增长与正式计分版本分别记录。':benchmark?.description||`${board.name} 按来源发布的任务范围和运行协议报告成绩。不同基准、版本及来源的结果分表阅读。`;
   $('benchmark-protocol').textContent=board.protocol||board.source?.protocol||'来源尚未披露完整运行协议，请沿原始来源核对。';
-  $('benchmark-scoring').textContent=(board.metric_note||`${board.metric}，单位 ${board.unit||'原生刻度'}。`)+ ' 未报告保持未知，真实 0 分保留；报告日期、源更新和本站核对日期均不等于逐项运行日期。';
+  $('benchmark-scoring').textContent=(board.metric_note||`${board.metric}，单位 ${board.unit||'原生刻度'}。`)+ ' '+metricDirectionLabel(board)+'。 未报告保持未知，真实 0 分保留；报告日期、源更新和本站核对日期均不等于逐项运行日期。';
   const scope=$('benchmark-domain-scope');scope.hidden=!isTbsOfficialBoard(board);
   $('benchmark-domain-counts').innerHTML=isTbsOfficialBoard(board)?`<table><thead><tr><th>Scientific domain</th><th>Tasks</th></tr></thead><tbody>${Object.entries(TBS_DOMAIN_LABELS).map(([key,name])=>`<tr><th scope="row">${esc(name)}</th><td>${board.task_matrix.tasks.filter(task=>task.domain===key).length}</td></tr>`).join('')}</tbody></table>`:'';
   $('benchmark-related-links').innerHTML=hubModel.boards.filter(item=>item.id!==board.id&&item.assessment===board.assessment).slice(0,6).map(item=>`<button type="button" data-benchmark-board="${esc(item.id)}">${esc(item.name)} <span aria-hidden="true">↗</span></button>`).join('');
@@ -974,7 +1046,7 @@ function initializeAtlasNavigation(){
 }
 
 async function init(){try{const response=await fetch('catalog.json',{cache:'no-cache'});if(!response.ok)throw Error(`HTTP ${response.status}`);data=await response.json();data.benchmarks.forEach(b=>b._search=[b.name,b.id,b.description,b.subdomain,label(b.domain),label(b.classification.domain_family),b.paper.title,...b.task_types,...b.modalities,...b.classification.capability_axes.map(label),...b.organizations.map(o=>o.organization),...(b.major_company_published_by||[]),...(b.major_company_evaluated_by||[]),...(b.major_company_published_labels||[]),...(b.major_company_evaluated_labels||[]),b.major_company_status?.label||''].join(' ').toLowerCase());$('hero-count').textContent=fmt(data.benchmark_count);$('hero-domains').textContent=Object.keys(data.facets.domain).length;$('hero-suites').textContent=data.suite_count;$('hero-orgs').textContent=data.organization_count;$('sync-status').textContent=`更新 ${data.generated_at}`;$('footer-meta').textContent=`${fmt(data.benchmark_count)} 条 · ${data.generated_at} · 公开成绩与评测入口`;const runners=data.benchmarks.filter(x=>x.integration.runner).length,linked=data.benchmarks.filter(x=>x.organizations.length).length,questioned=data.taxonomy?.question_count?.known_benchmark_count||0,major=data.taxonomy?.major_company||{};$('kpi-row').innerHTML=[[runners,'含调用入口'],[linked,'有机构证据'],[data.relationship_count,'发布/评测关系'],[questioned,'已提取规模数量'],[major.role_counts?.released_by||0,'公司发布/联合发布'],[major.role_counts?.official_evaluation||0,'公司官方报告使用']].map(([v,l])=>`<div class="kpi"><strong>${fmt(v)}</strong><span>${l}</span></div>`).join('');fillSelect('company-filter',(data.taxonomy?.major_company?.families||[]).map(x=>x.company));fillSelect('domain-filter',Object.keys(data.facets.domain));fillSelect('family-filter',Object.keys(data.facets.capability_axes));fillSelect('mode-filter',Object.keys(data.facets.evaluation_modes));fillSelect('access-filter',Object.keys(data.facets.data_access));fillSelect('year-filter',[...new Set(data.benchmarks.map(x=>x.year).filter(Boolean))].sort((a,b)=>b-a));renderBars('capability-bars',data.facets.capability_axes,'capability_axes');renderBars('workflow-bars',data.facets.workflow_stages,'workflow_stages');renderBars('evidence-bars',data.facets.evidence_tier,'evidence_tier');renderTaxonomy();renderFrontier();renderEvaluationHub();renderEvaluationWorkspace();$('suite-list').innerHTML=data.suites.filter(s=>['core-science-v1','chemistry-v1','biology-medicine-v1','research-agent-v1','scientific-literature-v1','scientific-ml-v1'].includes(s.id)).map(s=>`<article class="suite-card"><p class="eyebrow">${s.benchmarks.length} BENCHMARKS</p><h3>${esc(s.name)}</h3><p>${esc(s.description)}</p><button data-suite="${esc(s.id)}">查看套件 →</button></article>`).join('');applyFilters();if(typeof window!=='undefined'){const anchor=(window.location?.hash||'').replace(/^#/,'');showAtlasView(atlasViewForAnchor(anchor),anchor,false)}}catch(error){$('sync-status').textContent='目录加载失败';$('benchmark-list').innerHTML='<div class="empty-state">目录暂时无法读取。请使用本地 HTTP 服务打开网站，并确认 catalog.json 已生成。</div>';console.error(error)}}
-for(const id of ['search','domain-filter','family-filter','mode-filter','access-filter','year-filter','company-filter','industry-filter','sort-filter'])$(id).addEventListener(id==='search'?'input':'change',applyFilters);
+for(const id of ['search','domain-filter','family-filter','mode-filter','access-filter','year-filter','company-filter','industry-filter','result-status-filter','sort-filter'])$(id).addEventListener(id==='search'?'input':'change',applyFilters);
 $('reset-filters').addEventListener('click',reset);
 $('view-grid').addEventListener('click',()=>setView('grid'));
 $('view-list').addEventListener('click',()=>setView('list'));
@@ -1043,6 +1115,7 @@ document.addEventListener('keydown',e=>{
     else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus()}
   }
 });
+$('download-catalog-csv').addEventListener('click',downloadCatalogCsv);
 $('download-catalog').addEventListener('click',()=>{const a=document.createElement('a');a.href='catalog.json';a.download='ai4s-catalog.json';a.click()});
 document.querySelector('.drawer-panel').setAttribute('role','dialog');
 document.querySelector('.drawer-panel').setAttribute('aria-modal','true');
