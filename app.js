@@ -165,10 +165,15 @@ let activeScoreboardId=null;
 function frontierSources(sources){return list(sources).flatMap(source=>{const url=safeUrl(source?.url);return url?[`<a href="${esc(url)}" target="_blank" rel="noreferrer">${esc(source.label||'官方来源')} <span aria-hidden="true">↗</span></a>`]:[]}).join('')}
 function frontierMeta(items){return `<dl class="frontier-meta">${items.map(([name,value])=>`<div><dt>${esc(name)}</dt><dd>${esc(value||'待核实')}</dd></div>`).join('')}</dl>`}
 function frontierBenchmarkIds(){const existing=new Set(list(data?.benchmarks).map(b=>b.id));return [...new Set(list(data?.frontier?.benchmarks).map(b=>b?.benchmark_id).filter(id=>existing.has(id)))]}
+function nativeMetricNumber(value,decimals){
+  // Keep published nonzero measurements visible below fixed display precision.
+  if(value!==0&&(Math.abs(value)<0.5*10**(-decimals)||(Math.abs(value)<1e-3&&Number(value.toFixed(decimals))!==value)))return value.toExponential();
+  return value.toLocaleString('en-US',{minimumFractionDigits:decimals,maximumFractionDigits:decimals});
+}
 function frontierScore(value,column,withUnit=false){
   if(typeof value!=='number'||!Number.isFinite(value)||!column)return null;
   const decimals=Math.max(0,Math.min(4,Number.isInteger(column.decimals)?column.decimals:0));
-  const number=value.toLocaleString('en-US',{minimumFractionDigits:decimals,maximumFractionDigits:decimals});
+  const number=nativeMetricNumber(value,decimals);
   return number+(withUnit&&column.unit?(column.unit==='%'?'%':' '+column.unit):'');
 }
 function renderScoreboard(id){
@@ -561,7 +566,7 @@ function hubSearchText(row){return [row.model,row.provider,row.harness,row.effor
 function hubScore(row,withUnit=true) {
   if(!row||typeof row.score!=='number'||!Number.isFinite(row.score))return '—';
   const decimals=Number.isInteger(row.decimals)?Math.max(0,Math.min(4,row.decimals)):2;
-  return row.score.toLocaleString('en-US',{minimumFractionDigits:decimals,maximumFractionDigits:decimals})+(withUnit&&row.unit?(row.unit==='%'?'%':' '+row.unit):'');
+  return nativeMetricNumber(row.score,decimals)+(withUnit&&row.unit?(row.unit==='%'?'%':' '+row.unit):'');
 }
 function hubFilteredRows() {
   const query=hubState.query.trim().toLowerCase();
